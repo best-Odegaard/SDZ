@@ -1,0 +1,63 @@
+# ============================================================
+#  赛搭子 (SDZ) - Git 忽略规则
+# ============================================================
+
+# ---------- 依赖 ----------
+node_modules/
+.pnpm-store/
+pnpm-debug.log*
+package-lock.json
+
+# ---------- 构建产物 ----------
+dist/
+build/
+target/
+*.class
+*.war
+
+# ---------- 日志与运行时数据 ----------
+*.log
+logs/
+uploads/
+backup/
+
+# ---------- ★ 敏感内容（切勿提交）----------
+# 部署工具链：含服务器 IP / SSH 密码 / 数据库密码 / Redis 密码
+_deploy/
+# AI 工作记忆：含服务器凭据与内网信息
+.workbuddy/
+# 凭据类文件
+*.pem
+*.key
+*.p12
+.env.local
+.env.*.local
+*.credentials
+
+# ---------- 临时文件 ----------
+_*.png
+_*.log
+_*.txt
+_*.js
+nul
+
+# ---------- 编辑器 / 系统 ----------
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# ---------- 构建工具缓存 ----------
+.gradle/
+nbproject/private/
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans

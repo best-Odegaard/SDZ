@@ -1,0 +1,114 @@
+{
+    "easycom": {
+        "autoscan": true,
+        "custom": {}
+    },
+    "pages": [
+        {
+            "path": "pages/index/index",
+            "style": {
+                "navigationBarTitleText": "赛搭子",
+                "enablePullDownRefresh": true
+            }
+        },
+        {
+            "path": "pages/competition/detail",
+            "style": { "navigationBarTitleText": "赛事详情" }
+        },
+        {
+            "path": "pages/team/list",
+            "style": { "navigationBarTitleText": "找搭子" }
+        },
+        {
+            "path": "pages/team/publish",
+            "style": { "navigationBarTitleText": "发布组队" }
+        },
+        {
+            "path": "pages/team/detail",
+            "style": { "navigationBarTitleText": "组队详情" }
+        },
+        {
+            "path": "pages/team/match",
+            "style": { "navigationBarTitleText": "智能匹配" }
+        },
+        {
+            "path": "pages/resume/edit",
+            "style": { "navigationBarTitleText": "编辑简历" }
+        },
+        {
+            "path": "pages/resume/preview",
+            "style": { "navigationBarTitleText": "简历预览" }
+        },
+        {
+            "path": "pages/resume/received",
+            "style": { "navigationBarTitleText": "收到的简历" }
+        },
+        {
+            "path": "pages/community/index",
+            "style": { "navigationBarTitleText": "社区", "enablePullDownRefresh": true }
+        },
+        {
+            "path": "pages/community/post-detail",
+            "style": { "navigationBarTitleText": "帖子详情" }
+        },
+        {
+            "path": "pages/community/publish",
+            "style": { "navigationBarTitleText": "发帖" }
+        },
+        {
+            "path": "pages/calendar/index",
+            "style": { "navigationBarTitleText": "赛事日历" }
+        },
+        {
+            "path": "pages/mine/index",
+            "style": { "navigationBarTitleText": "我的" }
+        },
+        {
+            "path": "pages/mine/reminders",
+            "style": { "navigationBarTitleText": "提醒管理" }
+        },
+        {
+            "path": "pages/mine/favorites",
+            "style": { "navigationBarTitleText": "我的收藏" }
+        }
+    ],
+    "globalStyle": {
+        "navigationBarTextStyle": "white",
+        "navigationBarTitleText": "赛搭子",
+        "navigationBarBackgroundColor": "#4A6FE3",
+        "backgroundColor": "#F5F6FA",
+        "app-plus": { "background": "#F5F6FA" }
+    },
+    "tabBar": {
+        "color": "#909399",
+        "selectedColor": "#4A6FE3",
+        "borderStyle": "white",
+        "backgroundColor": "#FFFFFF",
+        "list": [
+            {
+                "pagePath": "pages/index/index",
+                "text": "首页",
+                "iconPath": "static/tabbar/home.png",
+                "selectedIconPath": "static/tabbar/home-active.png"
+            },
+            {
+                "pagePath": "pages/team/list",
+                "text": "搭子",
+                "iconPath": "static/tabbar/team.png",
+                "selectedIconPath": "static/tabbar/team-active.png"
+            },
+            {
+                "pagePath": "pages/community/index",
+                "text": "社区",
+                "iconPath": "static/tabbar/community.png",
+                "selectedIconPath": "static/tabbar/community-active.png"
+            },
+            {
+                "pagePath": "pages/mine/index",
+                "text": "我的",
+                "iconPath": "static/tabbar/mine.png",
+                "selectedIconPath": "static/tabbar/mine-active.png"
+            }
+        ]
+    }
+}

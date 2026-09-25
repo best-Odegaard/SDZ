@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.CompetitionMapper">
+
+    <resultMap type="Competition" id="CompetitionResult">
+        <id     property="id"            column="id"             />
+        <result property="title"         column="title"          />
+        <result property="type"          column="type"           />
+        <result property="category"      column="category"       />
+        <result property="difficulty"    column="difficulty"     />
+        <result property="collegeTag"    column="college_tag"    />
+        <result property="organizer"     column="organizer"      />
+        <result property="regStartTime"  column="reg_start_time" />
+        <result property="regEndTime"    column="reg_end_time"   />
+        <result property="matchTime"     column="match_time"     />
+        <result property="description"   column="description"    />
+        <result property="regInfo"       column="reg_info"       />
+        <result property="coverUrl"      column="cover_url"      />
+        <result property="status"        column="status"         />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectCompetitionVo">
+        select id, title, type, category, difficulty, college_tag, organizer,
+               reg_start_time, reg_end_time, match_time, description, reg_info,
+               cover_url, status, create_time, update_time
+        from competition
+    </sql>
+
+    <select id="selectCompetitionList" parameterType="Competition" resultMap="CompetitionResult">
+        <include refid="selectCompetitionVo"/>
+        <where>
+            <if test="title != null and title != ''">
+                AND title like concat('%', #{title}, '%')
+            </if>
+            <if test="type != null">
+                AND type = #{type}
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="difficulty != null">
+                AND difficulty = #{difficulty}
+            </if>
+            <if test="collegeTag != null and collegeTag != ''">
+                AND college_tag like concat('%', #{collegeTag}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+            <if test="params.beginTime != null and params.beginTime != ''">
+                and date_format(create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
+            </if>
+            <if test="params.endTime != null and params.endTime != ''">
+                and date_format(create_time,'%Y%m%d') &lt;= date_format(#{params.endTime},'%Y%m%d')
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectCompetitionById" parameterType="Long" resultMap="CompetitionResult">
+        <include refid="selectCompetitionVo"/>
+        where id = #{id}
+    </select>
+
+    <insert id="insertCompetition" parameterType="Competition" useGeneratedKeys="true" keyProperty="id">
+        insert into competition (
+            <if test="title != null and title != ''">title,</if>
+            <if test="type != null">type,</if>
+            <if test="category != null and category != ''">category,</if>
+            <if test="difficulty != null">difficulty,</if>
+            <if test="collegeTag != null">college_tag,</if>
+            <if test="organizer != null">organizer,</if>
+            <if test="regStartTime != null">reg_start_time,</if>
+            <if test="regEndTime != null">reg_end_time,</if>
+            <if test="matchTime != null">match_time,</if>
+            <if test="description != null">description,</if>
+            <if test="regInfo != null">reg_info,</if>
+            <if test="coverUrl != null">cover_url,</if>
+            <if test="status != null">status,</if>
+            create_time
+        )values(
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="type != null">#{type},</if>
+            <if test="category != null and category != ''">#{category},</if>
+            <if test="difficulty != null">#{difficulty},</if>
+            <if test="collegeTag != null">#{collegeTag},</if>
+            <if test="organizer != null">#{organizer},</if>
+            <if test="regStartTime != null">#{regStartTime},</if>
+            <if test="regEndTime != null">#{regEndTime},</if>
+            <if test="matchTime != null">#{matchTime},</if>
+            <if test="description != null">#{description},</if>
+            <if test="regInfo != null">#{regInfo},</if>
+            <if test="coverUrl != null">#{coverUrl},</if>
+            <if test="status != null">#{status},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateCompetition" parameterType="Competition">
+        update competition
+        <set>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="type != null">type = #{type},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="difficulty != null">difficulty = #{difficulty},</if>
+            <if test="collegeTag != null">college_tag = #{collegeTag},</if>
+            <if test="organizer != null">organizer = #{organizer},</if>
+            <if test="regStartTime != null">reg_start_time = #{regStartTime},</if>
+            <if test="regEndTime != null">reg_end_time = #{regEndTime},</if>
+            <if test="matchTime != null">match_time = #{matchTime},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="regInfo != null">reg_info = #{regInfo},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="status != null">status = #{status},</if>
+            update_time = sysdate()
+        </set>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteCompetitionById" parameterType="Long">
+        delete from competition where id = #{id}
+    </delete>
+
+    <delete id="deleteCompetitionByIds" parameterType="Long">
+        delete from competition where id in
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+
+    <select id="countCompetition" resultType="int">
+        select count(1) from competition
+    </select>
+
+</mapper>

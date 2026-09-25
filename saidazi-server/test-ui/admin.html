@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛搭子 · 管理员后台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f5f6fa; }
+        .sidebar { min-height: 100vh; background: #2c3e50; }
+        .sidebar a { color: #ecf0f1; text-decoration: none; display: block; padding: 14px 20px; }
+        .sidebar a:hover, .sidebar a.active { background: #34495e; }
+        .sidebar .brand { font-size: 20px; font-weight: bold; padding: 20px; color: #fff; border-bottom: 1px solid #34495e; }
+        .main { padding: 24px; }
+        .stat-card { border-radius: 10px; color: #fff; padding: 20px; }
+        .stat-card .num { font-size: 28px; font-weight: bold; }
+        .stat-card .lbl { font-size: 14px; opacity: 0.9; }
+    </style>
+</head>
+<body>
+<div class="d-flex">
+    <!-- 侧边栏 -->
+    <div class="sidebar col-2">
+        <div class="brand">赛搭子后台</div>
+        <a href="#" class="active" onclick="showPage('dashboard', this)">📊 数据概览</a>
+        <a href="#" onclick="showPage('competition', this)">🏆 赛事管理</a>
+        <a href="#" onclick="showPage('achievement', this)">🥇 往届成果</a>
+        <a href="index.html" style="margin-top:40px;">← 返回接口测试</a>
+    </div>
+
+    <!-- 主区域 -->
+    <div class="col-10 main">
+        <!-- 登录区 -->
+        <div id="loginArea" class="card p-4 shadow-sm" style="max-width:420px;margin:60px auto;">
+            <h4 class="text-center mb-3">管理员登录</h4>
+            <div class="mb-3">
+                <label class="form-label">用户名</label>
+                <input type="text" id="adminUser" class="form-control" value="admin">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">密码</label>
+                <input type="password" id="adminPwd" class="form-control" value="admin123">
+            </div>
+            <button class="btn btn-primary w-100" onclick="adminLogin()">登录</button>
+            <div class="text-muted text-center mt-2" style="font-size:12px;">默认账号 admin / admin123</div>
+        </div>
+
+        <!-- 工作区 -->
+        <div id="workspace" style="display:none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 id="pageTitle" class="m-0">数据概览</h4>
+                <span class="text-muted" id="adminHint"></span>
+            </div>
+
+            <!-- 数据概览 -->
+            <div id="page-dashboard">
+                <div class="row g-3" id="statRow"></div>
+            </div>
+
+            <!-- 赛事管理 -->
+            <div id="page-competition" style="display:none;">
+                <button class="btn btn-success mb-3" onclick="openCompetitionModal()">+ 新增赛事</button>
+                <table class="table table-bordered bg-white">
+                    <thead class="table-light">
+                        <tr><th>ID</th><th>标题</th><th>类型</th><th>分类</th><th>状态</th><th>报名时间</th><th>操作</th></tr>
+                    </thead>
+                    <tbody id="compTbody"></tbody>
+                </table>
+            </div>
+
+            <!-- 往届成果 -->
+            <div id="page-achievement" style="display:none;">
+                <div class="mb-3">
+                    <input type="number" id="achCompId" class="form-control" style="max-width:200px;display:inline-block;" placeholder="赛事ID">
+                    <button class="btn btn-primary" onclick="loadAchievements()">查询</button>
+                    <button class="btn btn-success" onclick="openAchModal()">+ 录入成果</button>
+                </div>
+                <table class="table table-bordered bg-white">
+                    <thead class="table-light"><tr><th>ID</th><th>赛事</th><th>队伍</th><th>奖项</th><th>简介</th><th>队员</th></tr></thead>
+                    <tbody id="achTbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 赛事模态框 -->
+<div class="modal fade" id="compModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title" id="compModalTitle">新增赛事</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" id="compId">
+        <div class="row g-3">
+          <div class="col-8"><label class="form-label">标题</label><input type="text" id="compTitle" class="form-control"></div>
+          <div class="col-4"><label class="form-label">类型</label><select id="compType" class="form-select"><option value="0">0-校内</option><option value="1">1-全国</option></select></div>
+          <div class="col-4"><label class="form-label">分类</label><select id="compCategory" class="form-select"><option>学科竞赛</option><option>创新创业</option><option>体育竞技</option><option>文艺活动</option><option>其他</option></select></div>
+          <div class="col-4"><label class="form-label">难度</label><select id="compDifficulty" class="form-select"><option value="1">1-入门</option><option value="2">2-进阶</option><option value="3">3-高阶</option></select></div>
+          <div class="col-4"><label class="form-label">状态</label><select id="compStatus" class="form-select"><option value="0">0-草稿</option><option value="1" selected>1-已发布</option><option value="2">2-已结束</option></select></div>
+          <div class="col-6"><label class="form-label">学院标签（校内）</label><input type="text" id="compCollegeTag" class="form-control"></div>
+          <div class="col-6"><label class="form-label">主办单位</label><input type="text" id="compOrganizer" class="form-control"></div>
+          <div class="col-4"><label class="form-label">报名开始</label><input type="datetime-local" id="compRegStart" class="form-control"></div>
+          <div class="col-4"><label class="form-label">报名截止</label><input type="datetime-local" id="compRegEnd" class="form-control"></div>
+          <div class="col-4"><label class="form-label">比赛时间</label><input type="datetime-local" id="compMatchTime" class="form-control"></div>
+          <div class="col-12"><label class="form-label">报名方式说明（含网址则写在文字中）</label><textarea id="compRegInfo" class="form-control" rows="2"></textarea></div>
+          <div class="col-12"><label class="form-label">赛事简介/参赛要求/奖项设置</label><textarea id="compDescription" class="form-control" rows="3"></textarea></div>
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button class="btn btn-primary" onclick="saveCompetition()">保存</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- 成果模态框 -->
+<div class="modal fade" id="achModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">录入往届成果</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <div class="mb-3"><label class="form-label">赛事ID</label><input type="number" id="achCompIdInput" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">队伍名称</label><input type="text" id="achTeamName" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">获奖等级</label><input type="text" id="achAward" class="form-control" placeholder="如：一等奖"></div>
+        <div class="mb-3"><label class="form-label">作品简介</label><textarea id="achIntro" class="form-control" rows="2"></textarea></div>
+        <div class="mb-3"><label class="form-label">队员姓名（逗号分隔）</label><input type="text" id="achMembers" class="form-control"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button class="btn btn-primary" onclick="saveAchievement()">保存</button></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const BASE = location.origin;
+let adminToken = localStorage.getItem('adminToken') || '';
+
+function api(path, opts={}) {
+    opts.headers = opts.headers || {};
+    opts.headers['Authorization'] = adminToken ? ('Bearer ' + adminToken) : '';
+    return fetch(BASE + path, opts).then(r => r.json());
+}
+
+function adminLogin() {
+    const u = document.getElementById('adminUser').value;
+    const p = document.getElementById('adminPwd').value;
+    api('/api/admin/login?username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p), {method:'POST'})
+      .then(res => {
+        if (res.code === 200) {
+            adminToken = res.data.token;
+            localStorage.setItem('adminToken', adminToken);
+            document.getElementById('loginArea').style.display = 'none';
+            document.getElementById('workspace').style.display = '';
+            document.getElementById('adminHint').textContent = '已登录：' + res.data.adminInfo.username;
+            loadDashboard();
+        } else {
+            alert(res.message);
+        }
+      });
+}
+
+function showPage(name, el) {
+    document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+    if (el) el.classList.add('active');
+    ['dashboard','competition','achievement'].forEach(p => {
+        document.getElementById('page-'+p).style.display = (p===name) ? '' : 'none';
+    });
+    const titles = {dashboard:'数据概览', competition:'赛事管理', achievement:'往届成果'};
+    document.getElementById('pageTitle').textContent = titles[name];
+    if (name === 'dashboard') loadDashboard();
+    if (name === 'competition') loadCompetitions();
+}
+
+const COLORS = ['#3498db','#2ecc71','#e67e22','#9b59b6','#1abc9c','#e74c3c'];
+function loadDashboard() {
+    api('/api/admin/dashboard').then(res => {
+        if (res.code !== 200) return;
+        const d = res.data;
+        const items = [
+            ['赛事', d.competitionCount], ['用户', d.userCount], ['组队', d.teamCount],
+            ['帖子', d.postCount], ['收藏', d.favoriteCount], ['提醒', d.reminderCount]
+        ];
+        document.getElementById('statRow').innerHTML = items.map((it, i) =>
+            `<div class="col-2"><div class="stat-card" style="background:${COLORS[i]}">
+                <div class="num">${it[1]}</div><div class="lbl">${it[0]}</div></div></div>`).join('');
+    });
+}
+
+function loadCompetitions() {
+    api('/api/admin/competition/list').then(res => {
+        if (res.code !== 200) { alert(res.message); return; }
+        const typeMap = {0:'校内', 1:'全国'};
+        const statusMap = {0:'草稿', 1:'已发布', 2:'已结束'};
+        document.getElementById('compTbody').innerHTML = res.data.map(c =>
+            `<tr><td>${c.id}</td><td>${c.title}</td><td>${typeMap[c.type]||c.type}</td>
+            <td>${c.category||''}</td><td>${statusMap[c.status]||c.status}</td>
+            <td>${fmt(c.regStartTime)} ~ ${fmt(c.regEndTime)}</td>
+            <td><button class="btn btn-sm btn-warning" onclick='editComp(${JSON.stringify(c)})'>编辑</button>
+            <button class="btn btn-sm btn-danger" onclick="delComp(${c.id})">删除</button></td></tr>`).join('');
+    });
+}
+
+function fmt(s) { return s ? s.replace('T',' ').substring(0,16) : '-'; }
+
+function openCompetitionModal() {
+    document.getElementById('compModalTitle').textContent = '新增赛事';
+    ['compId','compTitle','compCollegeTag','compOrganizer','compRegInfo','compDescription'].forEach(i=>document.getElementById(i).value='');
+    ['compRegStart','compRegEnd','compMatchTime'].forEach(i=>document.getElementById(i).value='');
+    new bootstrap.Modal(document.getElementById('compModal')).show();
+}
+
+function editComp(c) {
+    document.getElementById('compModalTitle').textContent = '编辑赛事 #'+c.id;
+    document.getElementById('compId').value = c.id;
+    document.getElementById('compTitle').value = c.title;
+    document.getElementById('compType').value = c.type;
+    document.getElementById('compCategory').value = c.category || '学科竞赛';
+    document.getElementById('compDifficulty').value = c.difficulty || 1;
+    document.getElementById('compStatus').value = c.status;
+    document.getElementById('compCollegeTag').value = c.collegeTag || '';
+    document.getElementById('compOrganizer').value = c.organizer || '';
+    document.getElementById('compRegInfo').value = c.regInfo || '';
+    document.getElementById('compDescription').value = c.description || '';
+    setDT('compRegStart', c.regStartTime); setDT('compRegEnd', c.regEndTime); setDT('compMatchTime', c.matchTime);
+    new bootstrap.Modal(document.getElementById('compModal')).show();
+}
+
+function setDT(id, s) {
+    if (!s) { document.getElementById(id).value=''; return; }
+    document.getElementById(id).value = s.replace(' ','T').substring(0,16);
+}
+function getDT(id) {
+    const v = document.getElementById(id).value;
+    return v ? v.replace('T',' ') + ':00' : null;
+}
+
+function saveCompetition() {
+    const id = document.getElementById('compId').value;
+    const body = {
+        title: document.getElementById('compTitle').value,
+        type: parseInt(document.getElementById('compType').value),
+        category: document.getElementById('compCategory').value,
+        difficulty: parseInt(document.getElementById('compDifficulty').value),
+        status: parseInt(document.getElementById('compStatus').value),
+        collegeTag: document.getElementById('compCollegeTag').value || null,
+        organizer: document.getElementById('compOrganizer').value || null,
+        regStartTime: getDT('compRegStart'),
+        regEndTime: getDT('compRegEnd'),
+        matchTime: getDT('compMatchTime'),
+        regInfo: document.getElementById('compRegInfo').value || null,
+        description: document.getElementById('compDescription').value || null
+    };
+    const url = id ? '/api/admin/competition/'+id : '/api/admin/competition';
+    const method = id ? 'PUT' : 'POST';
+    fetch(BASE + url, {method, headers:{'Authorization':'Bearer '+adminToken,'Content-Type':'application/json'}, body:JSON.stringify(body)})
+      .then(r=>r.json()).then(res=>{
+        if (res.code===200) { bootstrap.Modal.getInstance(document.getElementById('compModal')).hide(); loadCompetitions(); }
+        else alert(res.message);
+      });
+}
+
+function delComp(id) {
+    if (!confirm('确认删除该赛事？')) return;
+    fetch(BASE + '/api/admin/competition/'+id, {method:'DELETE', headers:{'Authorization':'Bearer '+adminToken}})
+      .then(r=>r.json()).then(res=>{ if(res.code===200) loadCompetitions(); else alert(res.message); });
+}
+
+function loadAchievements() {
+    const cid = document.getElementById('achCompId').value;
+    if (!cid) { alert('请输入赛事ID'); return; }
+    api('/api/achievement/list?competitionId='+cid).then(res=>{
+        if (res.code!==200) { alert(res.message); return; }
+        document.getElementById('achTbody').innerHTML = res.data.map(a=>
+            `<tr><td>${a.id}</td><td>${a.competitionId}</td><td>${a.teamName}</td><td>${a.award||''}</td><td>${a.introduction||''}</td><td>${a.members||''}</td></tr>`).join('');
+    });
+}
+
+function openAchModal() {
+    ['achTeamName','achAward','achIntro','achMembers'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('achCompIdInput').value = document.getElementById('achCompId').value || '';
+    new bootstrap.Modal(document.getElementById('achModal')).show();
+}
+
+function saveAchievement() {
+    const body = {
+        competitionId: parseInt(document.getElementById('achCompIdInput').value),
+        teamName: document.getElementById('achTeamName').value,
+        award: document.getElementById('achAward').value || null,
+        introduction: document.getElementById('achIntro').value || null,
+        members: document.getElementById('achMembers').value || null
+    };
+    fetch(BASE + '/api/achievement', {method:'POST', headers:{'Authorization':'Bearer '+adminToken,'Content-Type':'application/json'}, body:JSON.stringify(body)})
+      .then(r=>r.json()).then(res=>{
+        if (res.code===200) { bootstrap.Modal.getInstance(document.getElementById('achModal')).hide(); loadAchievements(); }
+        else alert(res.message);
+      });
+}
+
+// 自动登录（如有 token）
+if (adminToken) {
+    document.getElementById('loginArea').style.display = 'none';
+    document.getElementById('workspace').style.display = '';
+    document.getElementById('adminHint').textContent = '已登录（token 缓存）';
+    loadDashboard();
+}
+</script>
+</body>
+</html>

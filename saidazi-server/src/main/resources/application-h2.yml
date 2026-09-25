@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:saidazi;DB_CLOSE_DELAY=-1;MODE=MySQL;NON_KEYWORDS=USER
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-h2.sql
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# 文件上传路径（开发/测试用）
+file:
+  upload:
+    path: target/test-uploads/
+    allowedExtensions: jpg,jpeg,png,gif,bmp
+
+# 关闭详细日志
+logging:
+  level:
+    com.saidazi: WARN
+    org.springframework: WARN

@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/saidazi?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 文件上传配置
+file:
+  upload:
+    path: D:/saidazi/uploads/
+    imageMaxSize: 5242880  # 5MB
+    allowedExtensions: jpg,jpeg,png,gif,bmp
+
+# 微信配置
+wx:
+  app-id: your_app_id
+  app-secret: your_app_secret
+  # 订阅消息模板ID
+  subscribe-template-id: your_template_id
+
+# JWT 配置
+jwt:
+  secret: saidazi-jwt-secret-key-2026-!@#$%
+  expiration: 86400000  # 24小时
+
+logging:
+  level:
+    com.saidazi: DEBUG
+
+# SpringDoc / Swagger
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui/index.html
+  packages-to-scan: com.saidazi.controller

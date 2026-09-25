@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>赛搭子 · 接口测试平台</title>
+    <style>
+        /* ===== 全局 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        /* ===== 顶部导航 ===== */
+        .header {
+            background: linear-gradient(135deg, #4a6cf7, #6c5ce7);
+            color: #fff;
+            padding: 20px 0;
+            box-shadow: 0 2px 12px rgba(74,108,247,0.3);
+        }
+        .header .container {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .header h1 { font-size: 24px; font-weight: 700; letter-spacing: 2px; }
+        .header h1 span { background: rgba(255,255,255,0.2); padding: 2px 10px; border-radius: 10px; font-size: 14px; margin-left: 8px; }
+        .header .status { font-size: 13px; opacity: 0.9; }
+        .header .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .header .status .dot.online { background: #2ecc71; }
+        .header .status .dot.offline { background: #e74c3c; }
+
+        /* ===== Tab 导航 ===== */
+        .tabs {
+            display: flex; gap: 0; background: #fff;
+            border-radius: 12px; overflow: hidden; margin-bottom: 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .tabs .tab {
+            flex: 1; text-align: center; padding: 14px 0; cursor: pointer;
+            font-size: 14px; font-weight: 500; color: #666;
+            border-bottom: 3px solid transparent; transition: all 0.2s;
+        }
+        .tabs .tab:hover { background: #f8f9ff; }
+        .tabs .tab.active { color: #4a6cf7; border-bottom-color: #4a6cf7; background: #f0f3ff; }
+        .tabs .tab .badge {
+            display: inline-block; background: #e74c3c; color: #fff;
+            font-size: 11px; padding: 0 6px; border-radius: 8px; margin-left: 4px;
+        }
+
+        /* ===== 面板通用 ===== */
+        .panel { display: none; }
+        .panel.active { display: block; }
+
+        /* ===== 卡片 ===== */
+        .card {
+            background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+        }
+        .card h3 {
+            font-size: 16px; font-weight: 600; margin-bottom: 16px;
+            padding-bottom: 10px; border-bottom: 2px solid #f0f2f5;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .card h3 .icon { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: #4a6cf7; color: #fff; border-radius: 6px; font-size: 13px; }
+        .card h3 .tag {
+            font-size: 12px; font-weight: 400; background: #e8ecff; color: #4a6cf7;
+            padding: 1px 8px; border-radius: 10px; margin-left: 8px;
+        }
+
+        /* ===== 表单 ===== */
+        .form-row {
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 12px;
+        }
+        .form-row .field {
+            display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 120px;
+        }
+        .form-row .field label {
+            font-size: 12px; color: #888; font-weight: 500;
+        }
+        .form-row .field input, .form-row .field select {
+            padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px;
+            font-size: 13px; transition: border 0.2s; outline: none;
+        }
+        .form-row .field input:focus, .form-row .field select:focus {
+            border-color: #4a6cf7; box-shadow: 0 0 0 2px rgba(74,108,247,0.1);
+        }
+        .form-row .field input[type="file"] { padding: 6px; }
+
+        /* ===== 按钮 ===== */
+        .btn {
+            padding: 8px 18px; border: none; border-radius: 6px; cursor: pointer;
+            font-size: 13px; font-weight: 500; transition: all 0.2s; white-space: nowrap;
+        }
+        .btn-primary { background: #4a6cf7; color: #fff; }
+        .btn-primary:hover { background: #3b5de7; }
+        .btn-success { background: #2ecc71; color: #fff; }
+        .btn-success:hover { background: #27ae60; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-warning { background: #f39c12; color: #fff; }
+        .btn-warning:hover { background: #e67e22; }
+        .btn-outline { background: #fff; color: #666; border: 1px solid #ddd; }
+        .btn-outline:hover { background: #f5f5f5; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn + .btn { margin-left: 6px; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ===== 结果区 ===== */
+        .result-box {
+            background: #f8f9fc; border: 1px solid #e8ecff; border-radius: 8px;
+            padding: 12px; margin-top: 10px; font-size: 13px;
+            max-height: 350px; overflow: auto; position: relative;
+        }
+        .result-box .empty { color: #aaa; text-align: center; padding: 20px; }
+        .result-box .loading { color: #4a6cf7; text-align: center; padding: 20px; }
+        .result-box .loading::after { content: '...'; animation: dots 1.5s steps(4) infinite; }
+        @keyframes dots { 0%,20% { content: '.'; } 40% { content: '..'; } 60%,100% { content: '...'; } }
+        .result-box .error { color: #e74c3c; padding: 8px; }
+        .result-box .success { color: #27ae60; padding: 8px; }
+        .result-box pre {
+            background: #1e1e2e; color: #cdd6f4; padding: 12px; border-radius: 6px;
+            font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+        }
+
+        /* ===== 表格 ===== */
+        .data-table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+        }
+        .data-table th {
+            background: #f0f3ff; color: #4a6cf7; text-align: left; padding: 10px 12px;
+            font-weight: 600; border-bottom: 2px solid #dce0ff;
+        }
+        .data-table td {
+            padding: 10px 12px; border-bottom: 1px solid #f0f2f5;
+        }
+        .data-table tr:hover td { background: #fafbff; }
+        .data-table .status-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px;
+        }
+        .data-table .status-badge.green { background: #e8f8f0; color: #27ae60; }
+        .data-table .status-badge.yellow { background: #fef9e7; color: #f39c12; }
+        .data-table .status-badge.red { background: #fdedec; color: #e74c3c; }
+        .data-table .status-badge.gray { background: #f0f0f0; color: #888; }
+        .data-table .status-badge.blue { background: #e8ecff; color: #4a6cf7; }
+
+        /* ===== 两栏布局 ===== */
+        .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        @media (max-width: 768px) { .cols-2 { grid-template-columns: 1fr; } }
+
+        /* ===== 文件上传预览 ===== */
+        .upload-preview { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .upload-preview .item {
+            width: 100px; height: 100px; border-radius: 8px; overflow: hidden;
+            border: 1px solid #eee; position: relative;
+        }
+        .upload-preview .item img { width: 100%; height: 100%; object-fit: cover; }
+        .upload-preview .item .url { font-size: 10px; color: #aaa; word-break: break-all; padding: 2px; }
+
+        /* ===== Toast 提示 ===== */
+        .toast {
+            position: fixed; top: 20px; right: 20px; z-index: 9999;
+            padding: 12px 20px; border-radius: 8px; color: #fff; font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+        .toast.success { background: #2ecc71; }
+        .toast.error { background: #e74c3c; }
+        .toast.info { background: #4a6cf7; }
+        .toast.warning { background: #f39c12; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* ===== 左侧快捷面板 ===== */
+        .quick-bar {
+            background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+        }
+        .quick-bar label { font-size: 13px; color: #888; }
+        .quick-bar input { width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; }
+        .quick-bar .btn { padding: 6px 14px; }
+
+        /* ===== 滚动条美化 ===== */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d0d5dd; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #b0b5bd; }
+    </style>
+</head>
+<body>
+
+<!-- ===== 顶部导航 ===== -->
+<div class="header">
+    <div class="container">
+        <div>
+            <h1>🏆 赛搭子 <span>v1.0</span></h1>
+            <div style="font-size:13px;opacity:0.8;margin-top:4px;">接口测试平台 · 对接 Spring Boot 后端</div>
+        </div>
+        <div class="status" id="serverStatus">
+            <span class="dot offline"></span>检测后端状态...
+        </div>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- 快捷操作栏 -->
+    <div class="quick-bar">
+        <label>当前用户ID：</label>
+        <input type="number" id="globalUserId" value="1" min="1">
+        <button class="btn btn-outline btn-sm" onclick="refreshAll()">🔄 刷新全部</button>
+        <span style="color:#aaa;font-size:12px;margin-left:8px;">测试数据可在 sql/schema.sql 中查看</span>
+    </div>
+
+    <!-- Tab 导航 -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'panel-reminder')">⏰ 赛事提醒</div>
+        <div class="tab" onclick="switchTab(this,'panel-match')">🎯 智能匹配 <span class="badge">算法</span></div>
+        <div class="tab" onclick="switchTab(this,'panel-upload')">🖼️ 图片上传</div>
+        <div class="tab" onclick="switchTab(this,'panel-team')">👥 组队审核</div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- Panel 1: 赛事提醒 -->
+    <!-- ========================================================= -->
+    <div class="panel active" id="panel-reminder">
+        <div class="cols-2">
+            <div class="card">
+                <h3><span class="icon">➕</span> 设置提醒</h3>
+                <div class="form-row">
+                    <div class="field">
+                        <label>赛事 ID</label>
+                        <input type="number" id="remind-compId" value="1">
+                    </div>
+                    <div class="field">
+                        <label>提醒类型</label>
+                        <select id="remind-type">
+                            <option value="1">报名开始前提醒</option>
+                            <option value="2">截止前7天</option>
+                            <option value="3">截止前3天</option>
+                            <option value="4">截止前1天</option>
+                            <option value="5">自定义</option>
+                        </select>
+                    </div>
+                    <div class="field" style="flex:1.5;">
+                        <label>提醒时间 (留空=1分钟后)</label>
+                        <input type="text" id="remind-time" placeholder="2026-07-28 10:00:00">
+                    </div>
+                    <button class="btn btn-primary" onclick="addReminder()">设置</button>
+                </div>
+                <div class="result-box" id="remind-result"><div class="empty">点击上方按钮设置提醒</div></div>
+            </div>
+
+            <div class="card">
+                <h3><span class="icon">📋</span> 我的提醒</h3>
+                <div style="margin-bottom:10px;">
+                    <button class="btn btn-outline btn-sm" onclick="loadReminders()">🔄 刷新</button>
+                </div>
+                <div class="result-box" id="remind-list-result"><div class="empty">点击刷新加载</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- Panel 2: 智能匹配 -->
+    <!-- ========================================================= -->
+    <div class="panel" id="panel-match">
+        <div class="cols-2">
+            <div class="card">
+                <h3><span class="icon">👥</span> 推荐组队 <span class="tag">Jaccard 相似度</span></h3>
+                <div style="margin-bottom:10px;">
+                    <button class="btn btn-primary" onclick="recommendTeams()">🎯 开始匹配</button>
+                </div>
+                <div class="result-box" id="match-team-result"><div class="empty">点击按钮查看推荐组队</div></div>
+            </div>
+
+            <div class="card">
+                <h3><span class="icon">🧑‍🤝‍🧑</span> 推荐队友 <span class="tag">综合评分</span></h3>
+                <div style="margin-bottom:10px;">
+                    <button class="btn btn-primary" onclick="recommendMates()">🎯 开始匹配</button>
+                </div>
+                <div class="result-box" id="match-mate-result"><div class="empty">点击按钮查看推荐队友</div></div>
+            </div>
+        </div>
+        <div class="card">
+            <h3><span class="icon">📖</span> 算法说明</h3>
+            <div style="font-size:13px;color:#666;line-height:1.8;">
+                <p><b>组队匹配：</b>J(A, B) = |A ∩ B| / |A ∪ B| &nbsp;→&nbsp; 综合评分 = 技能×0.5 + 兴趣×0.3 + 共同收藏×0.2</p>
+                <p><b>队友匹配：</b>同上，过滤匹配度 &lt; 20 分的结果，按分数降序排列</p>
+                <p style="color:#aaa;font-size:12px;margin-top:4px;">当前测试数据：用户1(张三) 技能=前端,后端,算法 | 用户2(李四) 技能=算法,设计,文案 | 用户3(王五) 技能=硬件,嵌入式,算法</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- Panel 3: 图片上传 -->
+    <!-- ========================================================= -->
+    <div class="panel" id="panel-upload">
+        <div class="cols-2">
+            <div class="card">
+                <h3><span class="icon">📤</span> 单张上传</h3>
+                <div class="form-row">
+                    <div class="field" style="flex:2;">
+                        <label>选择图片</label>
+                        <input type="file" id="singleFile" accept="image/*">
+                    </div>
+                    <button class="btn btn-primary" onclick="uploadSingle()">上传</button>
+                </div>
+                <div class="result-box" id="upload-single-result"><div class="empty">选择图片后点击上传</div></div>
+            </div>
+
+            <div class="card">
+                <h3><span class="icon">📤</span> 批量上传 <span class="tag">最多3张</span></h3>
+                <div class="form-row">
+                    <div class="field" style="flex:2;">
+                        <label>选择多张图片</label>
+                        <input type="file" id="multiFiles" accept="image/*" multiple>
+                    </div>
+                    <button class="btn btn-primary" onclick="uploadMultiple()">批量上传</button>
+                </div>
+                <div class="result-box" id="upload-multi-result"><div class="empty">选择图片后点击上传</div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><span class="icon">🗑️</span> 删除图片</h3>
+            <div class="form-row">
+                <div class="field" style="flex:3;">
+                    <label>图片 URL</label>
+                    <input type="text" id="deleteFileUrl" placeholder="/uploads/images/2026/07/27/xxx.jpg">
+                </div>
+                <button class="btn btn-danger" onclick="deleteFile()">删除</button>
+            </div>
+            <div class="result-box" id="upload-delete-result"><div class="empty">输入 URL 后点击删除</div></div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- Panel 4: 组队审核 -->
+    <!-- ========================================================= -->
+    <div class="panel" id="panel-team">
+        <div class="cols-2">
+            <div class="card">
+                <h3><span class="icon">📝</span> 申请加入组队</h3>
+                <div class="form-row">
+                    <div class="field">
+                        <label>组队 ID</label>
+                        <input type="number" id="apply-teamId" value="1">
+                    </div>
+                    <div class="field">
+                        <label>简历 ID (可选)</label>
+                        <input type="number" id="apply-resumeId" placeholder="要求简历时必填">
+                    </div>
+                    <button class="btn btn-primary" onclick="applyTeam()">申请</button>
+                </div>
+                <div class="result-box" id="apply-result"><div class="empty">填写信息后点击申请</div></div>
+            </div>
+
+            <div class="card">
+                <h3><span class="icon">✅</span> 处理申请 <span class="tag">通过/拒绝</span></h3>
+                <div class="form-row">
+                    <div class="field">
+                        <label>申请 ID</label>
+                        <input type="number" id="process-appId" placeholder="从下方列表获取">
+                    </div>
+                    <div class="field">
+                        <label>操作</label>
+                        <select id="process-action">
+                            <option value="1">✅ 通过</option>
+                            <option value="2">❌ 拒绝</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-success" onclick="processApplication()">执行</button>
+                </div>
+                <div class="result-box" id="process-result"><div class="empty">先获取收到的申请列表</div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3><span class="icon">📋</span> 收到的申请列表 <span class="tag">发布人视角</span></h3>
+            <div style="margin-bottom:10px;">
+                <button class="btn btn-outline btn-sm" onclick="loadReceivedApps()">🔄 刷新列表</button>
+            </div>
+            <div class="result-box" id="received-apps-result"><div class="empty">点击刷新查看收到的申请</div></div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ========================================================= -->
+<!-- JavaScript -->
+<!-- ========================================================= -->
+<script>
+// ===== 全局配置 =====
+const BASE = '';
+
+// ===== Toast =====
+function showToast(message, type = 'info') {
+    const div = document.createElement('div');
+    div.className = `toast ${type}`;
+    div.textContent = message;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
+}
+
+// ===== 获取当前用户ID =====
+function uid() { return document.getElementById('globalUserId').value || 1; }
+
+// ===== Tab 切换 =====
+function switchTab(el, panelId) {
+    document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById(panelId).classList.add('active');
+}
+
+// ===== 通用 fetch =====
+async function apiFetch(url, options = {}) {
+    const res = await fetch(BASE + url, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...options.headers }
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`HTTP ${res.status}: ${text}`);
+    }
+    return res.json();
+}
+
+// ===== 输出到 result-box =====
+function showResult(elId, data, isError = false) {
+    const el = document.getElementById(elId);
+    if (isError) {
+        el.innerHTML = `<div class="error">❌ ${data}</div>`;
+        return;
+    }
+    const pretty = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    el.innerHTML = `<pre>${escapeHtml(pretty)}</pre>`;
+}
+
+function showEmpty(elId, msg) {
+    document.getElementById(elId).innerHTML = `<div class="empty">${msg}</div>`;
+}
+
+function showLoading(elId) {
+    document.getElementById(elId).innerHTML = `<div class="loading">⏳ 请求中</div>`;
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== 格式化表格输出 =====
+function formatTable(data, columns) {
+    if (!data || data.length === 0) return '<div class="empty">暂无数据</div>';
+    let html = '<table class="data-table"><thead><tr>';
+    columns.forEach(c => { html += `<th>${c.label}</th>`; });
+    html += '</tr></thead><tbody>';
+    data.forEach(row => {
+        html += '<tr>';
+        columns.forEach(c => {
+            let val = c.fn ? c.fn(row) : row[c.key];
+            if (val === null || val === undefined) val = '-';
+            html += `<td>${val}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+}
+
+// ===== 检测服务状态 =====
+async function checkServer() {
+    const el = document.getElementById('serverStatus');
+    try {
+        await apiFetch('/api/match/teams?userId=1');
+        el.innerHTML = '<span class="dot online"></span>后端运行中 ✅';
+    } catch (e) {
+        el.innerHTML = '<span class="dot offline"></span>后端未连接 ❌';
+    }
+}
+checkServer();
+
+// ===== 刷新全部 =====
+function refreshAll() {
+    loadReminders();
+    recommendTeams();
+    recommendMates();
+    loadReceivedApps();
+    showToast('已刷新全部数据', 'success');
+}
+
+// =============================================================
+// ① 赛事提醒
+// =============================================================
+async function addReminder() {
+    const userId = uid();
+    const competitionId = document.getElementById('remind-compId').value;
+    const remindType = document.getElementById('remind-type').value;
+    let remindTime = document.getElementById('remind-time').value.trim();
+
+    if (!remindTime) {
+        // 默认1分钟后
+        const d = new Date(Date.now() + 60000);
+        remindTime = d.getFullYear() + '-' +
+            String(d.getMonth()+1).padStart(2,'0') + '-' +
+            String(d.getDate()).padStart(2,'0') + ' ' +
+            String(d.getHours()).padStart(2,'0') + ':' +
+            String(d.getMinutes()).padStart(2,'0') + ':' +
+            String(d.getSeconds()).padStart(2,'0');
+    }
+
+    showLoading('remind-result');
+    try {
+        const params = new URLSearchParams({ userId, competitionId, remindTime, remindType });
+        const res = await fetch(`${BASE}/api/reminder/add?${params}`, { method: 'POST' });
+        const json = await res.json();
+        showResult('remind-result', json);
+        showToast('提醒设置成功', 'success');
+        loadReminders();
+    } catch (e) {
+        showResult('remind-result', e.message, true);
+        showToast('设置失败: ' + e.message, 'error');
+    }
+}
+
+async function loadReminders() {
+    showLoading('remind-list-result');
+    try {
+        const json = await apiFetch(`/api/reminder/list?userId=${uid()}`);
+        const data = json.data || [];
+        const html = formatTable(data, [
+            { label: 'ID', key: 'id' },
+            { label: '赛事ID', key: 'competitionId' },
+            { label: '提醒时间', fn: r => r.remindTime ? r.remindTime.replace('T',' ') : '-' },
+            { label: '类型', fn: r => ['','开始前','截止前7天','截止前3天','截止前1天','自定义'][r.remindType] || r.remindType },
+            { label: '状态', fn: r => {
+                const map = { 0: '<span class="status-badge yellow">待触发</span>', 1: '<span class="status-badge green">已推送</span>', 2: '<span class="status-badge gray">已取消</span>' };
+                return map[r.status] || r.status;
+            }},
+            { label: '操作', fn: r => r.status === 0 ? `<button class="btn btn-danger btn-sm" onclick="cancelReminder(${r.id})">取消</button>` : '-' }
+        ]);
+        document.getElementById('remind-list-result').innerHTML = html;
+    } catch (e) {
+        showResult('remind-list-result', e.message, true);
+    }
+}
+
+async function cancelReminder(id) {
+    if (!confirm('确定取消这条提醒吗？')) return;
+    try {
+        const res = await fetch(`${BASE}/api/reminder/${id}?userId=${uid()}`, { method: 'DELETE' });
+        const json = await res.json();
+        showToast('已取消提醒', 'success');
+        loadReminders();
+    } catch (e) {
+        showToast('取消失败: ' + e.message, 'error');
+    }
+}
+
+// =============================================================
+// ② 智能匹配
+// =============================================================
+async function recommendTeams() {
+    showLoading('match-team-result');
+    try {
+        const json = await apiFetch(`/api/match/teams?userId=${uid()}`);
+        const data = json.data || [];
+        const html = formatTable(data, [
+            { label: '组队ID', key: 'targetId' },
+            { label: '标题', key: 'title' },
+            { label: '匹配度', fn: r => `<span class="status-badge ${r.matchScore >= 80 ? 'green' : r.matchScore >= 50 ? 'yellow' : 'gray'}">${r.matchScore}分</span>` },
+            { label: '共同技能', key: 'commonSkills' },
+            { label: '人数', fn: r => `${r.approvedCount || 0}/${r.needCount || '-'}` },
+            { label: '状态', fn: r => r.status === 0 ? '<span class="status-badge green">招募中</span>' : '<span class="status-badge gray">已满员</span>' }
+        ]);
+        document.getElementById('match-team-result').innerHTML = html || '<div class="empty">暂无可推荐的组队</div>';
+    } catch (e) {
+        showResult('match-team-result', e.message, true);
+    }
+}
+
+async function recommendMates() {
+    showLoading('match-mate-result');
+    try {
+        const json = await apiFetch(`/api/match/mates?userId=${uid()}`);
+        const data = json.data || [];
+        const html = formatTable(data, [
+            { label: '用户ID', key: 'targetId' },
+            { label: '昵称', key: 'title' },
+            { label: '匹配度', fn: r => `<span class="status-badge ${r.matchScore >= 80 ? 'green' : r.matchScore >= 50 ? 'yellow' : 'blue'}">${r.matchScore}分</span>` },
+            { label: '共同技能', key: 'commonSkills' }
+        ]);
+        document.getElementById('match-mate-result').innerHTML = html || '<div class="empty">暂无可推荐的队友</div>';
+    } catch (e) {
+        showResult('match-mate-result', e.message, true);
+    }
+}
+
+// =============================================================
+// ③ 图片上传
+// =============================================================
+async function uploadSingle() {
+    const fileInput = document.getElementById('singleFile');
+    const file = fileInput.files[0];
+    if (!file) { showToast('请先选择图片', 'warning'); return; }
+
+    showLoading('upload-single-result');
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${BASE}/api/file/upload`, { method: 'POST', body: formData });
+        const json = await res.json();
+        showResult('upload-single-result', json);
+        if (json.code === 200) {
+            showToast('上传成功', 'success');
+            document.getElementById('deleteFileUrl').value = json.data;
+        }
+    } catch (e) {
+        showResult('upload-single-result', e.message, true);
+    }
+}
+
+async function uploadMultiple() {
+    const fileInput = document.getElementById('multiFiles');
+    const files = fileInput.files;
+    if (!files || files.length === 0) { showToast('请先选择图片', 'warning'); return; }
+
+    showLoading('upload-multi-result');
+    try {
+        const formData = new FormData();
+        for (const f of files) formData.append('files', f);
+        const res = await fetch(`${BASE}/api/file/upload-multiple`, { method: 'POST', body: formData });
+        const json = await res.json();
+        showResult('upload-multi-result', json);
+        if (json.code === 200) showToast(`成功上传 ${json.data.length} 张`, 'success');
+    } catch (e) {
+        showResult('upload-multi-result', e.message, true);
+    }
+}
+
+async function deleteFile() {
+    const url = document.getElementById('deleteFileUrl').value.trim();
+    if (!url) { showToast('请输入图片 URL', 'warning'); return; }
+
+    showLoading('upload-delete-result');
+    try {
+        const res = await fetch(`${BASE}/api/file/delete?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
+        const json = await res.json();
+        showResult('upload-delete-result', json);
+        if (json.code === 200) showToast('删除成功', 'success');
+    } catch (e) {
+        showResult('upload-delete-result', e.message, true);
+    }
+}
+
+// =============================================================
+// ④ 组队申请审核
+// =============================================================
+async function applyTeam() {
+    const userId = uid();
+    const teamId = document.getElementById('apply-teamId').value;
+    const resumeId = document.getElementById('apply-resumeId').value;
+
+    showLoading('apply-result');
+    try {
+        let url = `${BASE}/api/team/apply?userId=${userId}&teamId=${teamId}`;
+        if (resumeId) url += `&resumeId=${resumeId}`;
+        const res = await fetch(url, { method: 'POST' });
+        const json = await res.json();
+        showResult('apply-result', json);
+        if (json.code === 200) {
+            showToast('申请提交成功', 'success');
+            document.getElementById('process-appId').value = json.data?.id || '';
+            loadReceivedApps();
+        } else {
+            showToast('申请失败: ' + json.message, 'error');
+        }
+    } catch (e) {
+        showResult('apply-result', e.message, true);
+    }
+}
+
+async function processApplication() {
+    const userId = uid();
+    const applicationId = document.getElementById('process-appId').value;
+    const action = document.getElementById('process-action').value;
+
+    if (!applicationId) { showToast('请输入申请 ID', 'warning'); return; }
+
+    showLoading('process-result');
+    try {
+        const res = await fetch(`${BASE}/api/team/application/process?userId=${userId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ applicationId: Number(applicationId), action: Number(action) })
+        });
+        const json = await res.json();
+        showResult('process-result', json);
+        const actionText = action === '1' ? '通过' : '拒绝';
+        if (json.code === 200) {
+            showToast(`${actionText}成功`, 'success');
+            loadReceivedApps();
+        } else {
+            showToast(`${actionText}失败: ${json.message}`, 'error');
+        }
+    } catch (e) {
+        showResult('process-result', e.message, true);
+    }
+}
+
+async function loadReceivedApps() {
+    showLoading('received-apps-result');
+    try {
+        const json = await apiFetch(`/api/team/applications/received?userId=${uid()}`);
+        const data = json.data || [];
+        const html = formatTable(data, [
+            { label: '申请ID', key: 'id' },
+            { label: '组队ID', key: 'teamId' },
+            { label: '申请人ID', key: 'applicantId' },
+            { label: '简历ID', key: 'resumeId' },
+            { label: '匹配度', fn: r => r.matchScore != null ? `<span class="status-badge blue">${r.matchScore}分</span>` : '-' },
+            { label: '状态', fn: r => {
+                const map = { 0: '<span class="status-badge yellow">⏳ 待审核</span>', 1: '<span class="status-badge green">✅ 已通过</span>', 2: '<span class="status-badge red">❌ 已拒绝</span>' };
+                return map[r.status] || r.status;
+            }},
+            { label: '申请时间', fn: r => r.createTime ? r.createTime.replace('T',' ') : '-' },
+            { label: '操作', fn: r => r.status === 0 ? `<button class="btn btn-success btn-sm" onclick="quickProcess(${r.id},1)">通过</button><button class="btn btn-danger btn-sm" onclick="quickProcess(${r.id},2)">拒绝</button>` : '-' }
+        ]);
+        document.getElementById('received-apps-result').innerHTML = html;
+    } catch (e) {
+        showResult('received-apps-result', e.message, true);
+    }
+}
+
+async function quickProcess(appId, action) {
+    document.getElementById('process-appId').value = appId;
+    document.getElementById('process-action').value = action;
+    await processApplication();
+}
+
+// ===== 启动时自动加载 =====
+setTimeout(() => {
+    loadReminders();
+    loadReceivedApps();
+}, 300);
+
+</script>
+</body>
+</html>

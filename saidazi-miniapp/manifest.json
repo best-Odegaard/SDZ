@@ -1,0 +1,45 @@
+{
+    "name": "saidazi-miniapp",
+    "appid": "__UNI__SAIDAZI",
+    "description": "赛搭子 - 赛事信息聚合与组队小程序",
+    "versionName": "1.0.0",
+    "versionCode": 100,
+    "vueVersion": "3",
+    "transformPx": false,
+    "app-plus": {
+        "usingComponents": true,
+        "splashscreen": {
+            "alwaysShowBeforeRender": true,
+            "waiting": true,
+            "autoclose": true,
+            "delay": 0
+        },
+        "modules": {},
+        "distribute": {
+            "android": { "permissions": [] },
+            "ios": {},
+            "sdkConfigs": {}
+        }
+    },
+    "quickapp": {},
+    "mp-weixin": {
+        "appid": "wx1234567890abcdef",
+        "setting": {
+            "urlCheck": false,
+            "es6": true,
+            "postcss": true,
+            "minified": true
+        },
+        "usingComponents": true
+    },
+    "h5": {
+        "title": "赛搭子",
+        "router": { "mode": "hash", "base": "./" },
+        "devServer": {
+            "https": false
+        }
+    },
+    "networkTimeout": {
+        "request": 15000
+    }
+}
