@@ -9,9 +9,55 @@
  */
 import { mockApi } from './mock.js'
 
-export const USE_MOCK = true
+export const USE_MOCK = false
 
-const BASE_URL = 'http://localhost:8080/api'
+/* ==================== 后端地址配置 ====================
+ * 改这一行就能切换后端，不用动其他任何代码：
+ *
+ *   本地后端（需要自己在电脑上启动 saidazi-server）
+ *     'http://localhost:8080/api'
+ *
+ *   团队服务器后端（师兄部署的公网服务器）
+ *     'http://134.175.90.165:8080/api'
+ *
+ * 注意：切换到真实后端时，务必把上面的 USE_MOCK 改成 false，
+ *      否则请求仍会被本地假数据拦截。
+ * ==================================================== */
+export const BASE_URL = 'http://134.175.90.165:8080/api'
+
+/* ==================== 响应数据归一化 ====================
+ * 后端返回与页面期望之间存在少量系统性差异，在这里统一转换，
+ * 页面代码不需要感知：
+ *   1. 后端 LocalDateTime 序列化成 "2026-10-10T23:28:54.75131765"
+ *      → 统一转成 "2026-10-10 23:28:55"
+ *   2. 后端分页字段叫 records → 补一个 list 字段指向同一数组
+ * ==================================================== */
+
+const ISO_TIME_RE = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?$/
+
+function normalizeTimeStr(v) {
+  const m = ISO_TIME_RE.exec(v)
+  if (!m) return v
+  return `${m[1]} ${m[2]}`
+}
+
+function deepNormalize(node, depth = 0) {
+  if (depth > 6 || node === null || node === undefined) return node
+  if (typeof node === 'string') return normalizeTimeStr(node)
+  if (Array.isArray(node)) {
+    node.forEach((item, i) => { node[i] = deepNormalize(item, depth + 1) })
+    return node
+  }
+  if (typeof node === 'object') {
+    // 后端分页 { records, total, page, size } → 补 list 别名
+    if (Array.isArray(node.records)) node.list = node.records
+    Object.keys(node).forEach((k) => {
+      node[k] = deepNormalize(node[k], depth + 1)
+    })
+    return node
+  }
+  return node
+}
 
 /* ==================== Mock 路由表 ====================
  * key: `${METHOD} ${url 正则}`，按顺序匹配，命中即返回 mock 数据
@@ -120,6 +166,56 @@ export function getUserId() {
   return null
 }
 
+/* ==================== 自动登录 ====================
+ * 小程序首次使用时本地没有 userId，页面请求"必填 userId"的接口会 500。
+ * ensureUserId()：本地有就直接返回；没有就静默走一遍微信登录
+ *   （uni.login 拿 code → 后端 /user/login 换 token + userInfo → 存本地）。
+ * 并发调用会共享同一次登录（loginInFlight 去重），不会重复请求。
+ * ================================================= */
+let loginInFlight = null
+
+export function ensureUserId() {
+  const cached = getUserId()
+  if (cached != null) return Promise.resolve(cached)
+  if (USE_MOCK) return Promise.resolve(1)
+  if (!loginInFlight) {
+    loginInFlight = new Promise((resolve, reject) => {
+      uni.login({
+        provider: 'weixin',
+        success: (loginRes) => {
+          if (!loginRes || !loginRes.code) {
+            loginInFlight = null
+            return reject(new Error('uni.login 未返回 code'))
+          }
+          request({
+            url: '/user/login',
+            method: 'POST',
+            params: { code: loginRes.code, nickname: '微信用户' },
+            data: {},
+            hideError: true,
+          })
+            .then((data) => {
+              if (data && data.token) setToken(data.token)
+              const user = data && (data.user || data.userInfo)
+              if (user) uni.setStorageSync('userInfo', JSON.stringify(user))
+              loginInFlight = null
+              resolve(user && user.id != null ? user.id : null)
+            })
+            .catch((e) => {
+              loginInFlight = null
+              reject(e)
+            })
+        },
+        fail: (e) => {
+          loginInFlight = null
+          reject(e)
+        },
+      })
+    })
+  }
+  return loginInFlight
+}
+
 /**
  * 通用请求
  * @param {Object} options { url, method, data, params, hideError }
@@ -152,7 +248,8 @@ export function request(options) {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           const body = res.data || {}
           if (body.code === 200 || body.code === 0 || body.success) {
-            resolve(body.data !== undefined ? body.data : body)
+            const data = deepNormalize(body.data !== undefined ? body.data : body)
+            resolve(data)
           } else {
             if (!hideError) {
               uni.showToast({ title: body.message || '请求失败', icon: 'none' })
@@ -179,4 +276,4 @@ export function request(options) {
   })
 }
 
-export default { request, setToken, getToken, isLoggedIn, getUserId, BASE_URL, USE_MOCK }
+export default { request, setToken, getToken, isLoggedIn, getUserId, ensureUserId, BASE_URL, USE_MOCK }

@@ -1,5 +1,7 @@
 /** App.vue - 赛搭子用户端 */
 <script>
+import { ensureUserId } from './utils/request.js'
+
 export default {
   onLaunch() {
     console.log('赛搭子小程序启动')
@@ -12,11 +14,16 @@ export default {
     if (userInfo) {
       this.globalData.userInfo = JSON.parse(userInfo)
     }
+    // 静默自动登录：本地没有 userId 时走 uni.login → 后端换 token
+    // 这样各页面请求"必填 userId"的接口时不会因未登录而 500
+    ensureUserId()
+      .then((id) => { if (id != null) console.log('自动登录成功 userId =', id) })
+      .catch((e) => { console.warn('自动登录失败（不影响浏览，写操作时会重试）', e) })
   },
   globalData: {
     token: '',
     userInfo: null,
-    apiBaseUrl: 'http://localhost:8080/api'
+    apiBaseUrl: 'http://134.175.90.165:8080/api'
   }
 }
 </script>
