@@ -147,9 +147,19 @@ export default {
 
     async loadMonth() {
       try {
-        const monthStr = `${this.viewYear}-${String(this.viewMonth).padStart(2, '0')}`
-        const data = await competitionApi.calendar(monthStr)
-        this.dayMap = (data && data.days) || {}
+        // 后端参数为 year、month 两个整数，返回事件数组
+        const list = await competitionApi.calendar(this.viewYear, this.viewMonth)
+        const map = {}
+        if (Array.isArray(list)) {
+          for (const ev of list) {
+            if (!ev || !ev.eventTime) continue
+            const d = new Date(String(ev.eventTime).replace(/-/g, '/'))
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+            if (!map[key]) map[key] = []
+            map[key].push({ ...ev, date: key })
+          }
+        }
+        this.dayMap = map
       } catch (e) {
         console.error('加载日历失败', e)
         this.dayMap = {}

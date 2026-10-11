@@ -170,7 +170,14 @@ export default {
     },
 
     goPage(url) {
-      uni.navigateTo({ url })
+      // tabbar 页面必须用 switchTab 跳转
+      const tabPaths = ['/pages/index/index', '/pages/team/list', '/pages/community/index', '/pages/mine/index']
+      const path = url.split('?')[0]
+      if (tabPaths.includes(path)) {
+        uni.switchTab({ url: path })
+      } else {
+        uni.navigateTo({ url })
+      }
     },
     goResumeEdit() {
       uni.navigateTo({ url: '/pages/resume/edit' })

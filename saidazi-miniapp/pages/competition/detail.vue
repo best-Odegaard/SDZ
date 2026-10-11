@@ -169,6 +169,7 @@ export default {
     },
 
     async loadAchievements() {
+      if (!this.id) return
       try {
         const rows = await achievementApi.list(this.id)
         this.achievements = Array.isArray(rows) ? rows : []
@@ -178,6 +179,7 @@ export default {
     },
 
     async checkFavorite() {
+      if (!this.id) return
       try {
         this.isFav = await favoriteApi.check(getUserId(), this.id)
       } catch (e) {

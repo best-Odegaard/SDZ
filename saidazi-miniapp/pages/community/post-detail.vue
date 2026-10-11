@@ -152,6 +152,7 @@ export default {
     },
 
     async loadComments() {
+      if (!this.id) return
       try {
         const rows = await postApi.comments(this.id)
         this.comments = Array.isArray(rows) ? rows : []

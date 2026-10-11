@@ -1,6 +1,7 @@
 /** App.vue - 赛搭子用户端 */
 <script>
-import { ensureUserId } from './utils/request.js'
+import { setLoginGate } from './utils/request.js'
+import { wxLogin } from './utils/auth.js'
 
 export default {
   onLaunch() {
@@ -14,11 +15,20 @@ export default {
     if (userInfo) {
       this.globalData.userInfo = JSON.parse(userInfo)
     }
-    // 静默自动登录：本地没有 userId 时走 uni.login → 后端换 token
-    // 这样各页面请求"必填 userId"的接口时不会因未登录而 500
-    ensureUserId()
-      .then((id) => { if (id != null) console.log('自动登录成功 userId =', id) })
-      .catch((e) => { console.warn('自动登录失败（不影响浏览，写操作时会重试）', e) })
+    // 静默登录门闩：无 token 则先登录；所有接口请求会等待此 Promise
+    if (token && userInfo) {
+      setLoginGate(Promise.resolve())
+    } else {
+      setLoginGate(
+        wxLogin()
+          .then((info) => {
+            this.globalData.userInfo = info
+          })
+          .catch((e) => {
+            console.warn('静默登录失败，继续以游客身份加载', e)
+          })
+      )
+    }
   },
   globalData: {
     token: '',

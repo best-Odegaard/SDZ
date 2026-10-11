@@ -20,10 +20,12 @@ export function wxLogin() {
       success: (loginRes) => {
         userApi.login({ code: loginRes.code }).then(data => {
           if (data && data.token) setToken(data.token)
-          if (data && data.user) {
-            uni.setStorageSync('userInfo', JSON.stringify(data.user))
+          // 后端返回 { token, userInfo }（兼容旧字段 user）
+          const info = (data && (data.userInfo || data.user)) || null
+          if (info) {
+            uni.setStorageSync('userInfo', JSON.stringify(info))
           }
-          resolve(data)
+          resolve(info)
         }).catch(reject)
       },
       fail: reject
@@ -39,8 +41,8 @@ export function ensureLogin() {
     if (isLoggedIn()) {
       resolve(getUserId())
     } else {
-      wxLogin().then(data => {
-        const uid = data && data.user ? data.user.id : null
+      wxLogin().then(info => {
+        const uid = info ? info.id : null
         resolve(uid)
       }).catch(reject)
     }
