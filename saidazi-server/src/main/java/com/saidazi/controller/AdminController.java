@@ -5,6 +5,7 @@ import com.saidazi.dto.DashboardDTO;
 import com.saidazi.entity.Admin;
 import com.saidazi.entity.Competition;
 import com.saidazi.service.AdminService;
+import com.saidazi.task.CompetitionCrawlTask;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,9 @@ public class AdminController {
 
     @Autowired
     private AdminService adminService;
+
+    @Autowired
+    private CompetitionCrawlTask competitionCrawlTask;
 
     @Operation(summary = "管理员登录",
             description = "账号密码登录（BCrypt 校验）。默认账号 admin / admin123。\n" +
@@ -100,5 +104,14 @@ public class AdminController {
         } catch (IllegalArgumentException e) {
             return Result.badRequest(e.getMessage());
         }
+    }
+
+    @Operation(summary = "回填赛事报名/比赛时间",
+            description = "遍历已入库赛事，从通知正文（description）解析并补写 reg_start_time / " +
+                    "reg_end_time / match_time，只补空的列、不覆盖已有值，只读正文不联网，可重复执行。\n" +
+                    "用于修复爬虫早期未解析时间导致日历页 / 详情页时间空白的历史数据。")
+    @PostMapping("/competition/backfill-schedule")
+    public Result<Map<String, Object>> backfillSchedule() {
+        return Result.success(competitionCrawlTask.backfillSchedule(), "时间回填完成");
     }
 }
