@@ -147,9 +147,27 @@ export default {
 
     async loadMonth() {
       try {
-        const monthStr = `${this.viewYear}-${String(this.viewMonth).padStart(2, '0')}`
-        const data = await competitionApi.calendar(monthStr)
-        this.dayMap = (data && data.days) || {}
+        // 新版后端（爬虫接入后）：GET /competition/calendar?year=&month= 返回扁平数组
+        // [{ competitionId, title, eventType: 1报名开始|2报名截止|3比赛, eventTime }]
+        // 旧版返回 { days: { 'YYYY-MM-DD': [events] } }，这里两种都兼容
+        const data = await competitionApi.calendar(this.viewYear, this.viewMonth)
+        if (Array.isArray(data)) {
+          const map = {}
+          const TYPE = { 1: '报名开始', 2: '报名截止', 3: '比赛' }
+          for (const ev of data) {
+            if (!ev || !ev.eventTime) continue
+            const day = String(ev.eventTime).slice(0, 10) // '2026-09-01T00:00:00' -> '2026-09-01'
+            if (!map[day]) map[day] = []
+            map[day].push({
+              id: ev.competitionId != null ? ev.competitionId : ev.id,
+              title: ev.title,
+              type: TYPE[ev.eventType] || '比赛'
+            })
+          }
+          this.dayMap = map
+        } else {
+          this.dayMap = (data && data.days) || {}
+        }
       } catch (e) {
         console.error('加载日历失败', e)
         this.dayMap = {}

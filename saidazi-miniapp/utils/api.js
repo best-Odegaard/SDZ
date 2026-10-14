@@ -22,8 +22,8 @@ export const competitionApi = {
   detail: (id) => request({ url: `/competition/${id}`, method: 'GET' }),
   // 搜索
   search: (keyword) => request({ url: '/competition/search', method: 'GET', params: { keyword } }),
-  // 日历事件
-  calendar: (month) => request({ url: '/competition/calendar', method: 'GET', params: { month } }),
+  // 日历事件（后端要求 year / month 均为整数，返回扁平数组）
+  calendar: (year, month) => request({ url: '/competition/calendar', method: 'GET', params: { year, month } }),
 }
 
 /* ============== 收藏 ============== */
@@ -71,7 +71,7 @@ export const resumeApi = {
   upload: (userId, filePath) => {
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://localhost:8080/api/resume/upload?userId=' + userId,
+        url: 'http://134.175.90.165:8083/api/resume/upload?userId=' + userId,
         filePath: filePath,
         name: 'file',
         success: (res) => {
@@ -110,7 +110,7 @@ export const fileApi = {
   upload: (filePath) => {
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://localhost:8080/api/file/upload',
+        url: 'http://134.175.90.165:8083/api/file/upload',
         filePath: filePath,
         name: 'file',
         success: (res) => {
