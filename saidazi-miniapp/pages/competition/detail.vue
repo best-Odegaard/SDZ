@@ -28,7 +28,7 @@
         </view>
         <view class="info-item">
           <text class="info-label">报名时间</text>
-          <text class="info-value">{{ cnDate(detail.regStartTime) || '待公布' }}</text>
+          <text class="info-value">{{ regTimeView || '待公布' }}</text>
         </view>
       </view>
     </view>
@@ -109,6 +109,15 @@ export default {
   computed: {
     regStatus() { return calcRegStatus(this.detail) },
     statusClass() { return regStatusClass(calcRegStatus(this.detail)) },
+    /** 报名时间展示：起止 / 仅截止 / 仅开始 */
+    regTimeView() {
+      const s = this.detail.regStartTime
+      const e = this.detail.regEndTime
+      if (s && e) return `${this.cnDate(s)} - ${this.cnDate(e)}`
+      if (e) return `${this.cnDate(e)} 截止`
+      if (s) return `${this.cnDate(s)} 起`
+      return ''
+    },
     /** 倒计时文案：报名中 → 距截止；未开始 → 距开始；已截止 → 已结束 */
     countdownText() {
       const c = this.detail
@@ -140,6 +149,68 @@ export default {
   methods: {
     formatTime,
 
+    /**
+     * 服务端部分赛事把「报名信息」混在 description 长通知里，且 regInfo / 时间字段为 null，
+     * 这里统一做一次拆解：含“报名”标题的章节 → 报名信息，其余 → 赛事简介；并兜底抽取日期。
+     */
+    normalizeDetail(raw) {
+      const d = { ...(raw || {}) }
+      const { intro, reg } = this.splitNotice(d.description)
+      if (!d.regInfo && reg) d.regInfo = reg
+      if (reg && intro) d.description = intro
+      // 报名信息章节优先，命中不到再去简介里找
+      const dates = this.extractDates(`${d.regInfo || ''} ${d.description || ''}`)
+      if (!d.regEndTime && dates.regEnd) d.regEndTime = dates.regEnd
+      if (!d.matchTime && dates.match) d.matchTime = dates.match
+      return d
+    },
+
+    /** 按「一、二、三…」切分通知，标题含“报名”的章节归入报名信息 */
+    splitNotice(text) {
+      const t = String(text || '')
+      if (!t) return { intro: '', reg: '' }
+      const marks = []
+      const re = /[一二三四五六七八九十]{1,3}、/g
+      let m
+      while ((m = re.exec(t))) marks.push(m.index)
+      if (!marks.length) return { intro: t, reg: '' }
+
+      const introParts = [t.slice(0, marks[0])]
+      const regParts = []
+      for (let i = 0; i < marks.length; i++) {
+        const seg = t.slice(marks[i], i + 1 < marks.length ? marks[i + 1] : t.length)
+        // 章节标题：去掉序号后截到第一个子项标记，只取前 4 字判断（避免“赛程安排报名阶段…”误判）
+        const title = seg.slice(seg.indexOf('、') + 1).split(/[（(0-9０-９]/)[0].slice(0, 4)
+        if (title.indexOf('报名') > -1) {
+          regParts.push(seg.replace(/^[一二三四五六七八九十]{1,3}、\s*/, ''))
+        } else {
+          introParts.push(seg)
+        }
+      }
+      // 报名信息按「（一）（二）…」换行，便于阅读
+      const reg = regParts.join('\n').split(/(?=（[一二三四五六七八九十]+）)/).join('\n').trim()
+      return { intro: introParts.join(''), reg }
+    },
+
+    /** 服务端时间为空时，从通知正文里兜底抽取日期 */
+    extractDates(text) {
+      const t = String(text || '')
+      const toISO = (s) => {
+        const m = String(s || '').match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/)
+        if (!m) return ''
+        const p = (n) => (Number(n) < 10 ? '0' + Number(n) : String(Number(n)))
+        return `${m[1]}-${p(m[2])}-${p(m[3])}`
+      }
+      const grab = (re) => {
+        const mm = t.match(re)
+        return mm ? toISO(mm[1]) : ''
+      }
+      return {
+        regEnd: grab(/报名(?:截止)?时间[：:]\s*([^。；;，,（(]{2,25})/),
+        match: grab(/比赛时间[：:]\s*([^。；;，,（(]{2,25})/)
+      }
+    },
+
     /** 2026-09-20 → 2026年9月20日 */
     cnDate(dateStr) {
       const ymd = formatTime(dateStr, false)
@@ -152,7 +223,8 @@ export default {
       if (!this.id) return
       this.loading = true
       try {
-        this.detail = await competitionApi.detail(this.id) || {}
+        const raw = await competitionApi.detail(this.id) || {}
+        this.detail = this.normalizeDetail(raw)
       } catch (e) {
         console.error('加载赛事详情失败', e)
         this.detail = {}
