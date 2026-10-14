@@ -22,8 +22,8 @@ export const competitionApi = {
   detail: (id) => request({ url: `/competition/${id}`, method: 'GET' }),
   // 搜索
   search: (keyword) => request({ url: '/competition/search', method: 'GET', params: { keyword } }),
-  // 日历事件
-  calendar: (month) => request({ url: '/competition/calendar', method: 'GET', params: { month } }),
+  // 日历事件（后端要求 year / month 均为整数，返回扁平数组）
+  calendar: (year, month) => request({ url: '/competition/calendar', method: 'GET', params: { year, month } }),
 }
 
 /* ============== 收藏 ============== */

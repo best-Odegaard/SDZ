@@ -20,11 +20,22 @@ const projectRoot = __dirname
 
 const uniBin = resolve(projectRoot, 'node_modules', '@dcloudio', 'vite-plugin-uni', 'bin', 'uni.js')
 
+// 用命令行参数判断模式，而不是依赖外部 NODE_ENV。
+// 原因：npm run 默认不会设置 NODE_ENV，之前按 process.env.NODE_ENV 判断会让
+// `npm run build:mp-weixin` 误输出到 dist/dev（产物位置飘忽，看起来「时好时坏」）。
+const args = process.argv.slice(2)
+const isBuild = args[0] === 'build'
+const mode = isBuild ? 'production' : 'development'
+const outDir = resolve(projectRoot, 'dist', isBuild ? 'build' : 'dev')
+
+console.log(`[uni-run] mode=${mode}  output=dist/${isBuild ? 'build' : 'dev'}`)
+
 const env = {
   ...process.env,
+  NODE_ENV: mode,
   // 源码就在项目根目录
   UNI_INPUT_DIR: projectRoot,
-  UNI_OUTPUT_DIR: resolve(projectRoot, 'dist', process.env.NODE_ENV === 'production' ? 'build' : 'dev')
+  UNI_OUTPUT_DIR: outDir
 }
 
 const child = spawn(process.execPath, [uniBin, ...process.argv.slice(2)], {

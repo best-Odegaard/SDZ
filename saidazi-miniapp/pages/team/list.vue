@@ -45,7 +45,7 @@
     </view>
 
     <template v-else>
-      <team-card v-for="item in list" :key="item.id" :item="item" @tap="goDetail" />
+      <team-card v-for="item in list" :key="item.id" :item="item" @tap="goDetail(item)" />
 
       <empty-state
         v-if="!list.length"

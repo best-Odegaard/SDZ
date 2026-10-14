@@ -121,6 +121,51 @@ public class CompetitionCrawlTask {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-M-d");
 
+    /* ==================== 报名 / 比赛时间解析（填写 reg_start_time / reg_end_time / match_time） ====================
+     * 教务处通知里没有结构化的时间字段，报名与比赛时间都写在正文里，常见写法：
+     *   「（一）报名截止时间：2026年9月25日」
+     *   「1.报名及作品提交时间：即日起至2026年9月20日20:00」
+     *   「四、赛程安排 比赛时间：2026年9月30日9:00—17:00」
+     *   「报名时间：2026年9月10日至9月25日」（后半段省略年份）
+     *   「请务必在9月27日24:00前填写报名表」（没有“报名截止时间”字样，需兜底）
+     * 解析策略：按标签定位 → 截取标签后一小段 → 抽日期（可选时刻）→ 落到对应字段。
+     */
+
+    /** 日期（带年份），兼容 2026年9月25日 / 2026-09-25 / 2026.9.25 */
+    private static final Pattern SCHEDULE_DATE_YEAR =
+            Pattern.compile("(20\\d{2})\\s*[年./-]\\s*(\\d{1,2})\\s*[月./-]\\s*(\\d{1,2})\\s*日?");
+
+    /** 日期（省略年份），如「9月25日」「9月10日至9月25日」的后半段 */
+    private static final Pattern SCHEDULE_DATE_NO_YEAR =
+            Pattern.compile("(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日");
+
+    /** 时刻：9:00 / 20：00 / 中午12点整 / 下午3点30分 / 9点30分 */
+    private static final Pattern SCHEDULE_TIME =
+            Pattern.compile("(?:(\\d{1,2})\\s*[:：]\\s*(\\d{1,2})"
+                    + "|(中午|上午|下午|晚上)\\s*(\\d{1,2})\\s*[点时](?:\\s*(\\d{1,2})\\s*分?)?"
+                    + "|(\\d{1,2})\\s*[点时](\\d{1,2})?\\s*分)");
+
+    /** 时间段截断标记：句读、下一章节「（二）」、序号「3.」等 */
+    private static final Pattern SCHEDULE_CUT =
+            Pattern.compile("[；;。\\n\\r]|（[一二三四五六七八九十]）|\\(\\d+\\)|\\d+\\.\\s*[^\\d]");
+
+    /** 标签与字段映射：regEnd=报名截止、regStart=报名开始、regBoth=报名时间（含区间）、match=比赛时间 */
+    private static final String[][] SCHEDULE_LABELS = {
+            {"regEnd", "报名(?:截止|结束)(?:时间|日期|期限)?"},
+            {"regEnd", "(?:提交|上报|报送)(?:参赛作品)?截止(?:时间|日期)?"},
+            {"regEnd", "截止(?:时间|日期)?[:：]?\\s*(?:为|是)?"},
+            {"regStart", "报名(?:开始|起始|开放)(?:时间|日期)?"},
+            {"regBoth", "报名(?:及|和|与)?(?:作品)?提交(?:时间|日期|期限)"},
+            {"regBoth", "报名(?:时间|日期|期限)"},
+            {"match", "(?:比赛|竞赛|初赛|复赛|决赛|校赛|校内赛|大赛|赛事)(?:时间|日期)"}
+    };
+
+    /** 兜底：没有「报名截止」字样，但写成「在9月27日24:00前填写/提交/上传报名（表）」 */
+    private static final Pattern SCHEDULE_DEADLINE_FALLBACK =
+            Pattern.compile("(\\d{1,2})\\s*月\\s*(\\d{1,2})\\s*日"
+                    + "(?:\\s*\\d{1,2}\\s*[:：]\\s*\\d{1,2})?\\s*(?:前|之前|以前)"
+                    + "[^。；\\n]{0,14}(?:报名|填写|提交|上传)");
+
     @Autowired
     private CompetitionMapper competitionMapper;
 
@@ -351,8 +396,15 @@ public class CompetitionCrawlTask {
                 : publishDate.atStartOfDay();
         competition.setPublishTime(publishTime);
 
+        // 报名 / 比赛时间：从通知正文解析后写入，否则详情页三栏与日历页都会是空的
+        Schedule schedule = parseSchedule(description, publishTime.getYear());
+        competition.setRegStartTime(schedule.regStart);
+        competition.setRegEndTime(schedule.regEnd);
+        competition.setMatchTime(schedule.matchTime);
+
         competitionMapper.insert(competition);
-        log.info("新增赛事：{}（发布时间 {}{}）{}", competition.getTitle(), publishTime,
+        log.info("新增赛事：{}（发布时间 {}；报名开始 {}，报名截止 {}，比赛 {}）{}",
+                competition.getTitle(), publishTime, schedule.regStart, schedule.regEnd, schedule.matchTime,
                 publishDate == null ? "，详情页未解析到日期，已回退当前时间" : "", detailUrl);
         return true;
     }
@@ -481,6 +533,266 @@ public class CompetitionCrawlTask {
         return s.length() <= max ? s : s.substring(0, max);
     }
 
+    /* ==================== 报名 / 比赛时间：解析与回填 ==================== */
+
+    /**
+     * 回填历史赛事的报名/比赛时间。
+     *
+     * 背景：爬虫早期版本只写 title/description/publishTime，reg_start_time、reg_end_time、
+     * match_time 三列始终为 null（只有手工录入的示例数据才有值），导致详情页三栏信息与日历页空白。
+     *
+     * 本方法只读取库里已存的 description 做本地解析，不发起任何网络请求，可安全重复执行；
+     * 已存在的时间不会被覆盖，只补 null 的列。
+     *
+     * @return 统计结果 scanned（扫描条数）/ matched（正文中识别出时间）/ updated（实际写入）
+     */
+    public Map<String, Object> backfillSchedule() {
+        List<Competition> list = competitionMapper.selectList(
+                new LambdaQueryWrapper<Competition>()
+                        .isNotNull(Competition::getDescription)
+                        .and(w -> w.isNull(Competition::getRegStartTime)
+                                .or().isNull(Competition::getRegEndTime)
+                                .or().isNull(Competition::getMatchTime)));
+
+        int scanned = list.size();
+        int matched = 0;
+        int updated = 0;
+        for (Competition c : list) {
+            int defaultYear = c.getPublishTime() != null ? c.getPublishTime().getYear()
+                    : (c.getCreateTime() != null ? c.getCreateTime().getYear() : LocalDate.now().getYear());
+            Schedule s = parseSchedule(c.getDescription(), defaultYear);
+            if (s.isEmpty()) {
+                continue;
+            }
+            matched++;
+
+            Competition patch = new Competition();
+            patch.setId(c.getId());
+            if (s.regStart != null && c.getRegStartTime() == null) {
+                patch.setRegStartTime(s.regStart);
+            }
+            if (s.regEnd != null && c.getRegEndTime() == null) {
+                patch.setRegEndTime(s.regEnd);
+            }
+            if (s.matchTime != null && c.getMatchTime() == null) {
+                patch.setMatchTime(s.matchTime);
+            }
+            if (patch.getRegStartTime() == null && patch.getRegEndTime() == null
+                    && patch.getMatchTime() == null) {
+                continue;
+            }
+            competitionMapper.updateById(patch);
+            updated++;
+            log.info("回填时间：id={} {} | 报名开始={} 报名截止={} 比赛={}", c.getId(),
+                    truncate(c.getTitle(), 24), patch.getRegStartTime(), patch.getRegEndTime(), patch.getMatchTime());
+        }
+        log.info("历史赛事时间回填完成：扫描 {} 条，识别出时间 {} 条，写入 {} 条", scanned, matched, updated);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("scanned", scanned);
+        result.put("matched", matched);
+        result.put("updated", updated);
+        return result;
+    }
+
+    /**
+     * 从通知正文里解析报名开始 / 报名截止 / 比赛时间；解析不到的位置保持 null。
+     *
+     * @param text        通知正文
+     * @param defaultYear 正文里省略年份时使用的年份（一般取发布时间所在年）
+     */
+    private Schedule parseSchedule(String text, int defaultYear) {
+        Schedule s = new Schedule();
+        if (text == null || text.trim().isEmpty()) {
+            return s;
+        }
+        String body = text.replace('\u00A0', ' ').replace('\r', '\n');
+
+        for (String[] label : SCHEDULE_LABELS) {
+            String field = label[0];
+            if (isScheduleFilled(s, field)) {
+                continue;
+            }
+            Matcher lm = Pattern.compile(label[1]).matcher(body);
+            while (lm.find()) {
+                List<Dt> dates = findScheduleDates(cutSegment(body, lm.end()), defaultYear);
+                if (dates.isEmpty()) {
+                    continue;
+                }
+                if ("regEnd".equals(field)) {
+                    s.regEnd = toDateTime(withTime(dates.get(0), cutSegment(body, lm.end())), true);
+                } else if ("regStart".equals(field)) {
+                    s.regStart = toDateTime(withTime(dates.get(0), cutSegment(body, lm.end())), false);
+                } else if ("match".equals(field)) {
+                    s.matchTime = toDateTime(withTime(dates.get(0), cutSegment(body, lm.end())), false);
+                } else { // regBoth：一个日期视为截止，两个日期视为起止区间
+                    if (dates.size() >= 2) {
+                        s.regStart = toDateTime(dates.get(0), false);
+                        s.regEnd = toDateTime(dates.get(dates.size() - 1), true);
+                    } else {
+                        s.regEnd = toDateTime(withTime(dates.get(0), cutSegment(body, lm.end())), true);
+                    }
+                }
+                break; // 同一类标签只取第一条有效结果
+            }
+            if (s.regStart != null && s.regEnd != null && s.matchTime != null) {
+                break;
+            }
+        }
+
+        // 兜底：正文没写「报名截止时间」，但常写成「请务必在9月27日24:00前填写报名表」
+        if (s.regEnd == null) {
+            Matcher fm = SCHEDULE_DEADLINE_FALLBACK.matcher(body);
+            if (fm.find()) {
+                int year = defaultYear;
+                Matcher ym = Pattern.compile("(20\\d{2})\\s*年")
+                        .matcher(body.substring(Math.max(0, fm.start() - 24), fm.start()));
+                if (ym.find()) {
+                    year = Integer.parseInt(ym.group(1));
+                }
+                Dt d = new Dt(year, Integer.parseInt(fm.group(1)), Integer.parseInt(fm.group(2)), fm.end());
+                s.regEnd = toDateTime(d, true);
+            }
+        }
+
+        // 兜底：只识别出报名截止、没识别出报名开始，且正文写了区间「9月10日至9月25日」
+        if (s.regEnd != null && s.regStart == null) {
+            s.regStart = null; // 不臆造开始时间
+        }
+        if (s.regStart != null && s.regEnd != null && s.regStart.isAfter(s.regEnd)) {
+            LocalDateTime tmp = s.regStart;
+            s.regStart = s.regEnd;
+            s.regEnd = tmp;
+        }
+        return s;
+    }
+
+    /** 某字段是否已解析到值 */
+    private boolean isScheduleFilled(Schedule s, String field) {
+        if ("regEnd".equals(field)) {
+            return s.regEnd != null;
+        }
+        if ("regStart".equals(field)) {
+            return s.regStart != null;
+        }
+        if ("match".equals(field)) {
+            return s.matchTime != null;
+        }
+        return s.regStart != null && s.regEnd != null;
+    }
+
+    /** 截取标签之后的一小段文字（到句读或下一章节标记为止），避免把后面的内容误算进来 */
+    private String cutSegment(String text, int from) {
+        if (from >= text.length()) {
+            return "";
+        }
+        String seg = text.substring(from, Math.min(text.length(), from + 42));
+        Matcher m = SCHEDULE_CUT.matcher(seg);
+        if (m.find()) {
+            seg = seg.substring(0, m.start());
+        }
+        return seg;
+    }
+
+    /** 在片段里抽日期：优先带年份的写法，没有则按「9月25日」结合默认年份 */
+    private List<Dt> findScheduleDates(String seg, int defaultYear) {
+        List<Dt> list = new ArrayList<>();
+        Matcher m = SCHEDULE_DATE_YEAR.matcher(seg);
+        while (m.find()) {
+            list.add(new Dt(Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2)),
+                    Integer.parseInt(m.group(3)), m.end()));
+        }
+        if (list.isEmpty()) {
+            Matcher m2 = SCHEDULE_DATE_NO_YEAR.matcher(seg);
+            while (m2.find()) {
+                list.add(new Dt(defaultYear, Integer.parseInt(m2.group(1)),
+                        Integer.parseInt(m2.group(2)), m2.end()));
+            }
+        }
+        return list;
+    }
+
+    /** 在日期后面继续找具体时刻（9:00 / 中午12点 / 下午3点30分） */
+    private Dt withTime(Dt d, String seg) {
+        if (d == null || d.endIdx >= seg.length()) {
+            return d;
+        }
+        String after = seg.substring(d.endIdx, Math.min(seg.length(), d.endIdx + 16));
+        Matcher m = SCHEDULE_TIME.matcher(after);
+        if (!m.find()) {
+            return d;
+        }
+        int hour;
+        int minute;
+        if (m.group(1) != null) {
+            hour = Integer.parseInt(m.group(1));
+            minute = m.group(2) == null ? 0 : Integer.parseInt(m.group(2));
+        } else if (m.group(3) != null) {
+            hour = Integer.parseInt(m.group(4));
+            minute = m.group(5) == null ? 0 : Integer.parseInt(m.group(5));
+            String word = m.group(3);
+            if (("下午".equals(word) || "晚上".equals(word)) && hour < 12) {
+                hour += 12;
+            } else if ("中午".equals(word) && hour <= 2) {
+                hour += 12;
+            }
+        } else {
+            hour = Integer.parseInt(m.group(6));
+            minute = m.group(7) == null ? 0 : Integer.parseInt(m.group(7));
+        }
+        if (hour <= 23 && minute <= 59) {
+            d.hour = hour;
+            d.minute = minute;
+        }
+        return d;
+    }
+
+    /**
+     * 组装 LocalDateTime：有具体时刻用具体时刻；没有则截止时间取当天 23:59:59、其余取 00:00:00
+     */
+    private LocalDateTime toDateTime(Dt d, boolean endOfDayIfNoTime) {
+        if (d == null) {
+            return null;
+        }
+        try {
+            LocalDate date = LocalDate.of(d.year, d.month, d.day);
+            if (d.hour != null) {
+                return date.atTime(d.hour, d.minute);
+            }
+            return endOfDayIfNoTime ? date.atTime(23, 59, 59) : date.atStartOfDay();
+        } catch (Exception e) {
+            log.debug("非法日期，忽略：{}-{}-{}", d.year, d.month, d.day);
+            return null;
+        }
+    }
+
+    /** 解析出的报名/比赛时间 */
+    private static class Schedule {
+        LocalDateTime regStart;
+        LocalDateTime regEnd;
+        LocalDateTime matchTime;
+
+        boolean isEmpty() {
+            return regStart == null && regEnd == null && matchTime == null;
+        }
+    }
+
+    /** 片段中的一个日期（含可选时刻） */
+    private static class Dt {
+        final int year;
+        final int month;
+        final int day;
+        final int endIdx;
+        Integer hour;
+        Integer minute;
+
+        Dt(int year, int month, int day, int endIdx) {
+            this.year = year;
+            this.month = month;
+            this.day = day;
+            this.endIdx = endIdx;
+        }
+    }
+
     private void sleepQuietly(long millis) {
         try {
             Thread.sleep(millis);
@@ -502,4 +814,3 @@ public class CompetitionCrawlTask {
         }
     }
 }
-
