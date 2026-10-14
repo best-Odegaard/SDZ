@@ -34,7 +34,8 @@ import java.util.regex.Pattern;
  *    注意该站翻页地址是倒序生成的：第 1 页是 /sjjx/xkjs.htm，第 N（N≥2）页是
  *    /sjjx/xkjs/{总页数+1-N}.htm（例如共 13 页时第 2 页是 12.htm，最后一页是 1.htm），
  *    所以不能靠页码拼地址，只能从翻页控件里取链接。
- * 2. 只入库 START_PAGE 页及之后的页码（第 1 页仍会拉取，但仅用于定位第 2 页）。
+ * 2. 始终从第 1 页开始全量爬取（START_PAGE=1），逐页翻到最后一页，防止漏掉最新通知；
+ *    即使每次全量抓取，也依赖第 7 步的 source_url 去重避免产生重复数据。
  * 3. 标题白名单过滤：只有标题包含「通知 / 关于开展 / 关于举办」之一才抓取，
  *    其余文章（喜报、获奖新闻等）一律跳过，不进详情页、不入库。
  * 4. 解析文章标题 + 详情页链接（该站为 Visual SiteBuilder 系统，文章位于 div.doc-item 内）
@@ -58,11 +59,10 @@ public class CompetitionCrawlTask {
     private static final String LIST_PAGE_URL = "https://jwc.gdlgxy.edu.cn/sjjx/xkjs.htm";
 
     /**
-     * 起始页码：从第几页开始「入库」。
-     * 1 = 从最新页开始；当前按要求从第 2 页开始。
-     * （第 1 页仍会被请求一次，因为要用它的「下页」链接找到第 2 页地址，但该页文章不入库）
+     * 起始页码：固定从第 1 页（最新页）开始抓取，防止漏掉最新通知。
+     * 全量爬取配合 source_url 去重，即使重复抓取也不会产生重复数据。
      */
-    private static final int START_PAGE = 2;
+    private static final int START_PAGE = 1;
 
     /** 结束页码：0 表示一直抓到最后页；设为具体值可限制抓取范围，例如 5 表示只抓到第 5 页 */
     private static final int END_PAGE = 0;

@@ -64,3 +64,7 @@ nbproject/private/
 
 # 回填脚本生成的原始值备份（含通知正文，体积大，不入库）
 saidazi-server/tools/backfill_backup.json
+target/
+application.yml
+application-*.yml
+node_modules/
