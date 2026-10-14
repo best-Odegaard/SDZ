@@ -44,7 +44,7 @@
         :key="item.id"
         :item="item"
         :is-fav="favIds.includes(item.id)"
-        @tap="goDetail"
+        @tap="goDetail(item)"
         @favorite="toggleFavorite"
       />
 

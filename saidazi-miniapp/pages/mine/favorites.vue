@@ -5,7 +5,7 @@
         <competition-card
           :item="item"
           :is-fav="true"
-          @tap="goDetail"
+          @tap="goDetail(item)"
           @favorite="confirmRemove"
         />
       </view>
