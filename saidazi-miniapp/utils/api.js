@@ -71,7 +71,7 @@ export const resumeApi = {
   upload: (userId, filePath) => {
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://localhost:8080/api/resume/upload?userId=' + userId,
+        url: 'http://134.175.90.165:8083/api/resume/upload?userId=' + userId,
         filePath: filePath,
         name: 'file',
         success: (res) => {
@@ -110,7 +110,7 @@ export const fileApi = {
   upload: (filePath) => {
     return new Promise((resolve, reject) => {
       uni.uploadFile({
-        url: 'http://localhost:8080/api/file/upload',
+        url: 'http://134.175.90.165:8083/api/file/upload',
         filePath: filePath,
         name: 'file',
         success: (res) => {

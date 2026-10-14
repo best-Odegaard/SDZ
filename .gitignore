@@ -61,3 +61,8 @@ nbproject/private/
 .project
 .settings/
 .springBeans
+
+target/
+application.yml
+application-*.yml
+node_modules/

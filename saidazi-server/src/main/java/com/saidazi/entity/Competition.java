@@ -37,6 +37,9 @@ public class Competition {
     private LocalDateTime regEndTime;
     private LocalDateTime matchTime;
 
+    /** 发布时间（爬虫解析写入） */
+    private LocalDateTime publishTime;
+
     /** 赛事简介/参赛要求/奖项设置 */
     private String description;
 
@@ -45,6 +48,9 @@ public class Competition {
 
     /** 封面图 */
     private String coverUrl;
+
+    /** 来源链接（爬虫抓取来源，用于去重） */
+    private String sourceUrl;
 
     /** 状态：0草稿 1已发布 2已结束 */
     private Integer status;

@@ -16,7 +16,7 @@ export default {
   globalData: {
     token: '',
     userInfo: null,
-    apiBaseUrl: 'http://localhost:8080/api'
+    apiBaseUrl: 'http://134.175.90.165:8083/api'
   }
 }
 </script>
