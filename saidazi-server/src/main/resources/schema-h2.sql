@@ -48,9 +48,11 @@ CREATE TABLE IF NOT EXISTS `competition` (
     `reg_start_time`  DATETIME,
     `reg_end_time`    DATETIME,
     `match_time`      DATETIME,
+    `publish_time`    DATETIME,
     `description`     TEXT,
     `reg_info`        TEXT,
     `cover_url`       VARCHAR(256),
+    `source_url`      VARCHAR(512),
     `status`          TINYINT      DEFAULT 0,
     `create_time`     DATETIME     DEFAULT CURRENT_TIMESTAMP,
     `update_time`     DATETIME     DEFAULT CURRENT_TIMESTAMP

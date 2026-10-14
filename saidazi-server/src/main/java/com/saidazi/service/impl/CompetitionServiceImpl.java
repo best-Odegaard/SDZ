@@ -41,7 +41,8 @@ public class CompetitionServiceImpl implements CompetitionService {
         if (category != null && !category.isBlank()) {
             wrapper.eq(Competition::getCategory, category);
         }
-        wrapper.orderByDesc(Competition::getRegStartTime);
+        // 最新抓取的赛事排在最前：按发布时间倒序，同时间再按 id 倒序
+        wrapper.orderByDesc(Competition::getPublishTime).orderByDesc(Competition::getId);
 
         // 取出分页数据
         Page<Competition> p = new Page<>(page == null ? 1 : page, size == null ? 20 : size);
@@ -78,7 +79,8 @@ public class CompetitionServiceImpl implements CompetitionService {
                 .or().like(Competition::getOrganizer, keyword)
                 .or().like(Competition::getCategory, keyword)
                 .or().like(Competition::getDescription, keyword));
-        wrapper.orderByDesc(Competition::getRegStartTime);
+        // 最新抓取的赛事排在最前：按发布时间倒序，同时间再按 id 倒序
+        wrapper.orderByDesc(Competition::getPublishTime).orderByDesc(Competition::getId);
 
         Page<Competition> p = new Page<>(page == null ? 1 : page, size == null ? 20 : size);
         Page<Competition> result = competitionMapper.selectPage(p, wrapper);

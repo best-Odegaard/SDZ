@@ -3,15 +3,29 @@
  * 自动携带 JWT、统一错误处理、统一返回 data
  *
  * 【Mock 开关】
- *   USE_MOCK = true  → 全部请求走 utils/mock.js 本地假数据（界面开发阶段，无需启动后端）
- *   USE_MOCK = false → 走真实 saidazi-server 接口
+ *   USE_MOCK = true  → 默认全部走 utils/mock.js 本地假数据（界面开发阶段，无需启动后端）
+ *   USE_MOCK = false → 全部走真实 saidazi-server 接口
+ *
+ * 【真假数据分流】
+ *   在 USE_MOCK = true 时，路径命中 REAL_API_KEYWORDS（如 competition）的请求
+ *   会绕过 Mock、直连真实云服务器；其余路径仍走本地假数据。
  *   页面代码无需任何修改，两者返回结构完全一致。
  */
 import { mockApi } from './mock.js'
 
 export const USE_MOCK = true
 
-const BASE_URL = 'http://localhost:8080/api'
+const BASE_URL = 'http://134.175.90.165:8083/api'
+
+/* ==================== 真假数据分流 ====================
+ * 路径中包含以下关键字的请求走真实云服务器接口，
+ * 其余请求继续走本地 Mock 假数据。
+ * =================================================== */
+const REAL_API_KEYWORDS = ['competition']
+
+function shouldUseRealApi(url) {
+  return REAL_API_KEYWORDS.some((kw) => String(url || '').toLowerCase().includes(kw))
+}
 
 /* ==================== Mock 路由表 ====================
  * key: `${METHOD} ${url 正则}`，按顺序匹配，命中即返回 mock 数据
@@ -76,6 +90,8 @@ const MOCK_ROUTES = [
 /** 命中 mock 路由则返回 Promise，否则返回 null 表示需走真实请求 */
 function tryMock(method, url, params, data) {
   if (!USE_MOCK) return null
+  // 分流：命中真实接口关键字的请求（如 competition）不走 Mock，直连云服务器
+  if (shouldUseRealApi(url)) return null
   const M = method.toUpperCase()
   for (const route of MOCK_ROUTES) {
     if (route.method !== M) continue
