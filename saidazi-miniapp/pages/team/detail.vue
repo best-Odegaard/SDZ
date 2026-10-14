@@ -172,6 +172,7 @@ export default {
   },
   onLoad(options) {
     this.id = options.id
+    if (!this.id || this.id === 'undefined') return // 参数缺失：直接落「组队不存在」错误态，不发无效请求
     this.loadDetail()
   },
   methods: {

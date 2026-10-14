@@ -1,5 +1,5 @@
 <template>
-  <view class="team-card card" @tap="$emit('tap', item)">
+  <view class="team-card card">
     <!-- 发布人 -->
     <view class="head">
       <view class="avatar avatar-sm">
