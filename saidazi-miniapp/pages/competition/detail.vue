@@ -1,126 +1,97 @@
 <template>
-  <view class="container" v-if="detail.id">
-    <!-- 头部信息 -->
-    <view class="card">
-      <view class="title">{{ detail.title }}</view>
-      <view class="meta">
-        <text class="tag" :class="diffClass">{{ diffName }}</text>
-        <text class="tag" v-if="detail.category">{{ detail.category }}</text>
-        <text class="tag tag-gray" v-if="detail.collegeTag">{{ detail.collegeTag }}</text>
-        <text class="tag tag-gray">{{ detail.type === 0 ? '校内' : '全国' }}</text>
-      </view>
-      <view class="organizer">
-        <text class="label">主办单位</text>
-        <text class="value">{{ detail.organizer || '—' }}</text>
-      </view>
-      <view class="stats">
-        <text class="stat">{{ detail.viewCount || 0 }} 次浏览</text>
-        <text class="dot">·</text>
-        <text class="stat">{{ detail.favoriteCount || 0 }} 人收藏</text>
-      </view>
+  <view class="container detail-page" v-if="detail.id">
+    <!-- 顶部蓝色渐变横幅：赛事名称 -->
+    <view class="hero">
+      <view class="hero-title">{{ detail.title }}</view>
     </view>
 
-    <!-- 时间节点 -->
-    <view class="card">
-      <view class="section-title">时间节点</view>
-      <view class="timeline">
-        <view class="tl-item">
-          <view class="tl-dot start"></view>
-          <view class="tl-body">
-            <view class="tl-label">报名开始</view>
-            <view class="tl-time">{{ formatTime(detail.regStartTime) || '待公布' }}</view>
-          </view>
+    <!-- 信息卡片：状态 + 倒计时 + 三栏信息 -->
+    <view class="info-card card">
+      <view class="tag-row">
+        <text class="tag-scope">{{ detail.type === 0 ? '校内' : '全国' }}</text>
+        <text class="tag-status" :class="statusClass">{{ regStatus }}</text>
+        <text class="tag-cat" v-if="detail.category">{{ detail.category }}</text>
+      </view>
+
+      <view class="countdown" v-if="countdownText">
+        <text>{{ countdownText }}</text>
+      </view>
+
+      <view class="info-grid">
+        <view class="info-item">
+          <text class="info-label">主办单位</text>
+          <text class="info-value">{{ detail.organizer || '待公布' }}</text>
         </view>
-        <view class="tl-item">
-          <view class="tl-dot" :class="regDotClass"></view>
-          <view class="tl-body">
-            <view class="tl-label">
-              报名截止
-              <text class="reg-status" :class="statusClass">{{ regStatus }}</text>
-            </view>
-            <view class="tl-time">{{ formatTime(detail.regEndTime) || '待公布' }}</view>
-          </view>
+        <view class="info-item">
+          <text class="info-label">比赛时间</text>
+          <text class="info-value">{{ cnDate(detail.matchTime) || '待公布' }}</text>
         </view>
-        <view class="tl-item last">
-          <view class="tl-dot match"></view>
-          <view class="tl-body">
-            <view class="tl-label">比赛时间</view>
-            <view class="tl-time">{{ formatTime(detail.matchTime) || '待公布' }}</view>
-          </view>
+        <view class="info-item">
+          <text class="info-label">报名时间</text>
+          <text class="info-value">{{ cnDate(detail.regStartTime) || '待公布' }}</text>
         </view>
       </view>
     </view>
 
     <!-- 赛事简介 -->
-    <view class="card">
-      <view class="section-title">赛事简介</view>
+    <view class="section">
+      <view class="section-title">赛事简介：</view>
       <view class="rich-text">{{ detail.description || '暂无简介' }}</view>
     </view>
 
-    <!-- 报名方式 -->
-    <view class="card">
-      <view class="section-title">报名方式</view>
-      <view class="rich-text">{{ detail.regInfo || '暂无说明' }}</view>
-      <view class="copy-tip" @tap="copyRegInfo">点击复制报名信息</view>
+    <!-- 报名信息 -->
+    <view class="section">
+      <view class="section-title">报名信息：</view>
+      <view class="rich-text">{{ detail.regInfo || '暂无报名信息' }}</view>
+      <view class="copy-tip" v-if="detail.regInfo" @tap="copyRegInfo">点击复制报名信息</view>
     </view>
 
-    <!-- 组队入口 -->
-    <view class="card">
-      <view class="section-title">找搭子</view>
-      <view class="team-entry">
-        <view class="te-box" @tap="goTeamList">
-          <text class="te-icon">👥</text>
-          <text class="te-title">看搭子</text>
-          <text class="te-sub">浏览本赛事组队</text>
-        </view>
-        <view class="te-box" @tap="goTeamPublish">
-          <text class="te-icon">✏️</text>
-          <text class="te-title">找搭子</text>
-          <text class="te-sub">发布组队需求</text>
+    <!-- 本校往届获奖成果库 -->
+    <view class="section">
+      <view class="section-title">本校往届获奖成果库：</view>
+      <view v-if="achievements.length">
+        <view class="ach-item" v-for="a in achievements" :key="a.id">
+          <view class="ach-head">
+            <text class="ach-team">{{ a.teamName }}</text>
+            <text class="tag-award">{{ a.award }}</text>
+          </view>
+          <view class="ach-intro">{{ a.introduction }}</view>
+          <view class="ach-foot">
+            <text class="ach-members">队员：{{ a.members }}</text>
+            <text class="ach-year">{{ a.year }}</text>
+          </view>
         </view>
       </view>
+      <view class="ach-empty" v-else>暂无往届成果，期待你们的身影 ~</view>
     </view>
 
-    <!-- 往届成果 -->
-    <view class="card" v-if="achievements.length">
-      <view class="section-title">校内往届成果</view>
-      <view class="ach-item" v-for="a in achievements" :key="a.id">
-        <view class="ach-head">
-          <text class="ach-team">{{ a.teamName }}</text>
-          <text class="tag tag-green">{{ a.award }}</text>
-        </view>
-        <view class="ach-intro">{{ a.introduction }}</view>
-        <view class="ach-foot">
-          <text class="ach-members">队员：{{ a.members }}</text>
-          <text class="ach-year">{{ a.year }}</text>
-        </view>
-      </view>
-    </view>
-
-    <!-- 底部操作条 -->
+    <!-- 底部操作条：收藏 / 提醒 / 找搭子 -->
     <view class="footer-bar">
-      <view class="btn-plain btn-sm fav-foot" @tap="toggleFavorite">
-        <text :class="['fav-ico', isFav ? 'on' : '']">{{ isFav ? '★' : '☆' }}</text>
-        <text>{{ isFav ? '已收藏' : '收藏' }}</text>
+      <view class="foot-icon" @tap="toggleFavorite">
+        <text :class="['foot-ico', isFav ? 'on' : '']">{{ isFav ? '★' : '☆' }}</text>
       </view>
-      <view class="btn-ghost btn-sm" @tap="openReminder">设置提醒</view>
-      <view class="btn-primary btn-sm" @tap="goTeamList">找搭子</view>
+      <view class="foot-icon" @tap="openReminder">
+        <text class="foot-ico">⏰</text>
+      </view>
+      <view class="foot-btn" @tap="goTeamList">找搭子</view>
     </view>
   </view>
 
-  <empty-state v-else-if="!loading" icon="⚠️" text="赛事不存在" sub="可能已下架或链接有误" />
+  <view class="container detail-page" v-else-if="!loading">
+    <empty-state icon="⚠️" text="赛事不存在" sub="可能已下架或链接有误" />
+  </view>
 </template>
 
 <script>
 /**
- * 赛事详情页
+ * 赛事详情页（按 UI 设计稿实现）
  * 参数: id 赛事ID
- * 行为: 收藏、设置提醒、跳组队、展示往届成果
+ * 结构: 蓝色横幅标题 → 状态/倒计时/三栏信息卡 → 赛事简介 → 报名信息 → 本校往届获奖成果库 → 底部操作条
+ * 行为: 收藏、设置提醒、跳组队列表
  */
 import { competitionApi, favoriteApi, reminderApi, achievementApi } from '@/utils/api.js'
 import {
-  formatTime, calcRegStatus, regStatusClass, difficultyName, difficultyClass,
-  getUserId
+  formatTime, calcRegStatus, regStatusClass, daysToRegEnd, getUserId
 } from '@/utils/auth.js'
 import EmptyState from '@/components/empty-state/empty-state.vue'
 
@@ -136,13 +107,28 @@ export default {
     }
   },
   computed: {
-    diffName() { return difficultyName(this.detail.difficulty) },
-    diffClass() { return difficultyClass(this.detail.difficulty) },
     regStatus() { return calcRegStatus(this.detail) },
     statusClass() { return regStatusClass(calcRegStatus(this.detail)) },
-    regDotClass() {
-      const s = calcRegStatus(this.detail)
-      return { '报名中': 'ing', '未开始': 'wait', '已截止': 'end' }[s] || 'wait'
+    /** 倒计时文案：报名中 → 距截止；未开始 → 距开始；已截止 → 已结束 */
+    countdownText() {
+      const c = this.detail
+      if (!c || !c.id) return ''
+      const status = calcRegStatus(c)
+      const day = 86400000
+      const parse = (s) => (s ? new Date(String(s).replace(/-/g, '/')).getTime() : 0)
+      if (status === '报名中') {
+        if (!c.regEndTime) return ''
+        const d = Math.ceil((parse(c.regEndTime) - Date.now()) / day)
+        if (d <= 0) return '今天报名截止'
+        return `距离报名截止还有 ${d} 天`
+      }
+      if (status === '未开始') {
+        if (!c.regStartTime) return ''
+        const d = Math.ceil((parse(c.regStartTime) - Date.now()) / day)
+        if (d <= 0) return '报名即将开始'
+        return `距离报名开始还有 ${d} 天`
+      }
+      return '报名已结束'
     }
   },
   onLoad(options) {
@@ -154,12 +140,19 @@ export default {
   methods: {
     formatTime,
 
+    /** 2026-09-20 → 2026年9月20日 */
+    cnDate(dateStr) {
+      const ymd = formatTime(dateStr, false)
+      if (!ymd) return ''
+      const [y, m, d] = ymd.split('-')
+      return `${y}年${Number(m)}月${Number(d)}日`
+    },
+
     async loadDetail() {
       if (!this.id) return
       this.loading = true
       try {
-        this.detail = await competitionApi.detail(this.id)
-        uni.setNavigationBarTitle({ title: this.detail.title || '赛事详情' })
+        this.detail = await competitionApi.detail(this.id) || {}
       } catch (e) {
         console.error('加载赛事详情失败', e)
         this.detail = {}
@@ -250,69 +243,106 @@ export default {
 </script>
 
 <style scoped>
-.title { font-size: 38rpx; font-weight: 700; line-height: 1.4; color: #303133; margin-bottom: 20rpx; }
-.meta { margin-bottom: 24rpx; }
+.detail-page { padding-bottom: 160rpx; }
 
-.organizer { display: flex; align-items: center; gap: 14rpx; margin-bottom: 16rpx; }
-.organizer .label {
-  font-size: 22rpx; color: #909399; background: #F5F6FA;
-  padding: 4rpx 14rpx; border-radius: 6rpx; flex-shrink: 0;
+/* ===== 顶部蓝色渐变横幅 ===== */
+.hero {
+  margin: -20rpx -20rpx 0;
+  padding: 46rpx 40rpx 90rpx;
+  background: linear-gradient(160deg, #6E8DF5 0%, #4A6FE3 60%, #3D5FD6 100%);
+  border-radius: 0 0 0 0;
 }
-.organizer .value { font-size: 26rpx; color: #303133; flex: 1; }
-
-.stats { font-size: 24rpx; color: #909399; display: flex; align-items: center; gap: 10rpx; }
-.dot { color: #DCDFE6; }
-
-/* 时间轴 */
-.timeline { padding-left: 8rpx; }
-.tl-item { display: flex; gap: 20rpx; position: relative; padding-bottom: 32rpx; }
-.tl-item.last { padding-bottom: 0; }
-.tl-item::before {
-  content: ''; position: absolute; left: 11rpx; top: 28rpx; bottom: 0;
-  width: 2rpx; background: #EBEEF5;
+.hero-title {
+  font-size: 38rpx; font-weight: 700; color: #fff; line-height: 1.5;
+  text-align: center;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
 }
-.tl-item.last::before { display: none; }
-.tl-dot {
-  width: 24rpx; height: 24rpx; border-radius: 50%; flex-shrink: 0;
-  margin-top: 6rpx; background: #DCDFE6;
-}
-.tl-dot.start { background: #909399; }
-.tl-dot.ing { background: #52C41A; }
-.tl-dot.wait { background: #FA8C16; }
-.tl-dot.end { background: #C0C4CC; }
-.tl-dot.match { background: #4A6FE3; }
-.tl-body { flex: 1; }
-.tl-label { font-size: 28rpx; color: #303133; font-weight: 500; margin-bottom: 6rpx; }
-.tl-label .reg-status { margin-left: 12rpx; font-size: 24rpx; }
-.tl-time { font-size: 26rpx; color: #606266; }
 
-/* 富文本 */
-.rich-text { font-size: 27rpx; color: #606266; line-height: 1.75; white-space: pre-wrap; word-break: break-all; }
+/* ===== 信息卡片（悬浮在横幅之上） ===== */
+.info-card {
+  margin-top: -64rpx;
+  position: relative; z-index: 2;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 30rpx rgba(74, 111, 227, 0.12);
+}
+.tag-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14rpx; }
+.tag-scope, .tag-status, .tag-cat {
+  font-size: 24rpx; padding: 6rpx 20rpx; border-radius: 8rpx; line-height: 1.4;
+}
+.tag-scope { color: #4A6FE3; background: #ECF0FF; font-weight: 600; }
+.tag-cat { color: #909399; background: #F5F6FA; }
+.tag-status.reg-ing  { color: #fff; background: #FF7A45; font-weight: 600; }
+.tag-status.reg-wait { color: #fff; background: #FAAD14; font-weight: 600; }
+.tag-status.reg-end  { color: #909399; background: #F0F1F5; font-weight: 600; }
+
+.countdown {
+  margin-top: 20rpx; font-size: 28rpx; font-weight: 600; color: #FF7A45;
+}
+.countdown text { color: #FF7A45; }
+
+/* 三栏信息 */
+.info-grid {
+  display: flex; gap: 16rpx; margin-top: 26rpx;
+}
+.info-item {
+  flex: 1; min-width: 0;
+  background: #F7F8FC; border-radius: 12rpx; padding: 18rpx 16rpx;
+  display: flex; flex-direction: column; gap: 10rpx;
+}
+.info-label { font-size: 22rpx; color: #909399; flex-shrink: 0; }
+.info-value {
+  font-size: 24rpx; color: #303133; line-height: 1.5; font-weight: 500;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+  overflow: hidden; word-break: break-all;
+}
+
+/* ===== 通用小节 ===== */
+.section { margin-top: 30rpx; }
+.section-title { font-size: 30rpx; font-weight: 700; color: #303133; margin-bottom: 16rpx; }
+.rich-text {
+  font-size: 27rpx; color: #606266; line-height: 1.8;
+  white-space: pre-wrap; word-break: break-all;
+}
 .copy-tip {
   margin-top: 20rpx; text-align: center; font-size: 26rpx; color: #4A6FE3;
   background: #ECF0FF; border-radius: 12rpx; padding: 18rpx;
 }
 
-/* 组队入口 */
-.team-entry { display: flex; gap: 20rpx; }
-.te-box {
-  flex: 1; background: #F7F8FA; border-radius: 16rpx; padding: 32rpx 20rpx;
-  display: flex; flex-direction: column; align-items: center;
-}
-.te-icon { font-size: 48rpx; margin-bottom: 12rpx; }
-.te-title { font-size: 28rpx; font-weight: 600; color: #303133; margin-bottom: 6rpx; }
-.te-sub { font-size: 22rpx; color: #909399; }
-
-/* 往届成果 */
+/* ===== 往届成果 ===== */
 .ach-item { padding: 22rpx 0; border-bottom: 1rpx solid #F2F3F5; }
 .ach-item:last-child { border-bottom: none; padding-bottom: 0; }
 .ach-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12rpx; }
 .ach-team { font-size: 28rpx; font-weight: 600; color: #303133; }
+.tag-award {
+  font-size: 22rpx; color: #B8860B; background: #FFF7E6;
+  padding: 4rpx 16rpx; border-radius: 8rpx; flex-shrink: 0;
+}
 .ach-intro { font-size: 26rpx; color: #606266; line-height: 1.6; margin-bottom: 12rpx; }
 .ach-foot { display: flex; justify-content: space-between; font-size: 24rpx; color: #909399; }
+.ach-empty {
+  padding: 40rpx 0 10rpx; text-align: center; font-size: 26rpx; color: #C0C4CC;
+}
 
-/* 底部 */
-.fav-foot { display: flex; align-items: center; justify-content: center; gap: 8rpx; flex: 0 0 auto; width: 180rpx; }
-.fav-ico { font-size: 32rpx; color: #C0C4CC; }
-.fav-ico.on { color: #FA8C16; }
+/* ===== 底部操作条 ===== */
+.footer-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 99;
+  display: flex; align-items: center; gap: 20rpx;
+  padding: 18rpx 30rpx calc(18rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(90deg, #4A6FE3 0%, #3D5FD6 100%);
+}
+.foot-icon {
+  width: 76rpx; height: 76rpx; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.foot-ico { font-size: 36rpx; color: #fff; line-height: 1; }
+.foot-ico.on { color: #FFD666; }
+.foot-btn {
+  flex: 1; height: 76rpx; border-radius: 38rpx;
+  background: #fff; color: #4A6FE3;
+  font-size: 30rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
 </style>
